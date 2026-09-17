@@ -1,6 +1,5 @@
-# SevaSetu - Community Service Request and Volunteer Matching Platform
-
-A location-aware community service platform connecting individuals in need of local assistance with verified volunteers through intelligent, multi-factor matching.
+<h1 align="center">SevaSetu</h1> 
+<p align="center">Community Service Request and Volunteer Matching Platform</p>
 
 ---
 
