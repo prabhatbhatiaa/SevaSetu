@@ -147,26 +147,30 @@ SevaSetu/
 - Node.js (v18+)
 - MongoDB (local or Atlas)
 
-### 1. Clone Repository
+### 1. Clone Repository & Install Dependencies
 ```bash
 git clone <repository-url>
 cd SevaSetu
+
+# Install all dependencies (root, backend, and frontend)
+npm run install:all
 ```
 
-### 2. Backend Setup
+### 2. Configure Environment
 ```bash
-cd server
-npm install
-cp .env.example .env
+cp server/.env.example server/.env
+```
+
+### 3. Run Development Server (Both Frontend & Backend)
+```bash
+# Starts both Express API (:5000) and Vite React (:5173) concurrently
 npm run dev
 ```
 
-### 3. Frontend Setup
-```bash
-cd ../client
-npm install
-npm run dev
-```
+> You can also run them individually:
+> - Backend only: `npm run dev:server`
+> - Frontend only: `npm run dev:client`
+
 
 ---
 

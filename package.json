@@ -1,0 +1,27 @@
+{
+  "name": "sevasetu",
+  "version": "1.0.0",
+  "description": "Community Service Request and Volunteer Matching Platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "seed": "npm run seed --prefix server",
+    "test": "npm run test --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "sevasetu",
+    "volunteer-matching",
+    "community-service",
+    "sdg",
+    "geospatial"
+  ],
+  "author": "SevaSetu Team",
+  "license": "ISC"
+}
