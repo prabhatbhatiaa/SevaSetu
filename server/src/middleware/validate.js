@@ -95,10 +95,134 @@ const validateChangePassword = [
   handleValidationErrors,
 ];
 
+const { SERVICE_CATEGORIES, REQUEST_URGENCY, DAYS_OF_WEEK, TIME_SLOTS } = require('../models/constants');
+
+const validateVolunteerProfile = [
+  body('skills')
+    .optional()
+    .isArray()
+    .withMessage('Skills must be an array of strings'),
+  body('categories')
+    .optional()
+    .isArray()
+    .withMessage('Categories must be an array')
+    .custom((categories) => {
+      const invalid = categories.filter((c) => !SERVICE_CATEGORIES.includes(c));
+      if (invalid.length > 0) {
+        throw new Error(`Invalid categories: ${invalid.join(', ')}`);
+      }
+      return true;
+    }),
+  body('serviceRadius')
+    .optional()
+    .isFloat({ min: 1, max: 100 })
+    .withMessage('Service radius must be between 1 and 100 kilometers'),
+  body('location.coordinates')
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Coordinates must be an array of [longitude, latitude]'),
+  body('bio')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Bio cannot exceed 500 characters'),
+  body('availability')
+    .optional()
+    .isArray()
+    .withMessage('Availability must be an array of schedule slots'),
+  handleValidationErrors,
+];
+
+const validateCreateServiceRequest = [
+  body('title')
+    .trim()
+    .notEmpty()
+    .withMessage('Title is required')
+    .isLength({ min: 5, max: 120 })
+    .withMessage('Title must be between 5 and 120 characters'),
+  body('description')
+    .trim()
+    .notEmpty()
+    .withMessage('Description is required')
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Description must be between 10 and 2000 characters'),
+  body('category')
+    .trim()
+    .notEmpty()
+    .withMessage('Category is required')
+    .isIn(SERVICE_CATEGORIES)
+    .withMessage(`Category must be one of: ${SERVICE_CATEGORIES.join(', ')}`),
+  body('requiredSkills')
+    .optional()
+    .isArray()
+    .withMessage('Required skills must be an array of strings'),
+  body('urgency')
+    .optional()
+    .isIn(Object.values(REQUEST_URGENCY))
+    .withMessage(`Urgency must be one of: ${Object.values(REQUEST_URGENCY).join(', ')}`),
+  body('location')
+    .notEmpty()
+    .withMessage('Location is required'),
+  body('location.coordinates')
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Location coordinates must be an array of [longitude, latitude]')
+    .custom(([lng, lat]) => {
+      if (typeof lng !== 'number' || typeof lat !== 'number') {
+        throw new Error('Coordinates must be numbers');
+      }
+      if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+        throw new Error('Coordinates are out of geographical range');
+      }
+      return true;
+    }),
+  body('preferredDate')
+    .optional({ checkFalsy: true })
+    .isISO8601()
+    .withMessage('Preferred date must be a valid ISO date'),
+  body('preferredTime')
+    .optional()
+    .trim()
+    .isLength({ max: 50 }),
+  handleValidationErrors,
+];
+
+const validateUpdateServiceRequest = [
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 5, max: 120 })
+    .withMessage('Title must be between 5 and 120 characters'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ min: 10, max: 2000 })
+    .withMessage('Description must be between 10 and 2000 characters'),
+  body('category')
+    .optional()
+    .trim()
+    .isIn(SERVICE_CATEGORIES)
+    .withMessage(`Category must be one of: ${SERVICE_CATEGORIES.join(', ')}`),
+  body('requiredSkills')
+    .optional()
+    .isArray()
+    .withMessage('Required skills must be an array of strings'),
+  body('urgency')
+    .optional()
+    .isIn(Object.values(REQUEST_URGENCY))
+    .withMessage(`Urgency must be one of: ${Object.values(REQUEST_URGENCY).join(', ')}`),
+  body('location.coordinates')
+    .optional()
+    .isArray({ min: 2, max: 2 })
+    .withMessage('Coordinates must be [longitude, latitude]'),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateRegister,
   validateLogin,
   validateUpdateProfile,
   validateChangePassword,
+  validateVolunteerProfile,
+  validateCreateServiceRequest,
+  validateUpdateServiceRequest,
 };
