@@ -10,8 +10,10 @@ dotenv.config();
 // Initialize express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (skip auto-connect in test mode so tests manage their own isolated database)
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 
 // Middleware
 app.use(cors({
@@ -44,8 +46,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes placeholder (to be attached in subsequent tasks)
-// app.use('/api/auth', require('./src/routes/authRoutes'));
+// API Routes
+app.use('/api/auth', require('./src/routes/authRoutes'));
 // app.use('/api/volunteers', require('./src/routes/volunteerRoutes'));
 // app.use('/api/requests', require('./src/routes/requestRoutes'));
 // app.use('/api/assignments', require('./src/routes/assignmentRoutes'));
