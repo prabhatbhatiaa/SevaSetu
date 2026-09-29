@@ -10,16 +10,39 @@ dotenv.config();
 // Initialize express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB (skip auto-connect in test mode so tests manage their own isolated database)
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
+
+const {
+  helmetMiddleware,
+  mongoSanitizeMiddleware,
+  hppMiddleware,
+  apiLimiter,
+} = require('./src/middleware/security');
+
+// Security HTTP headers
+app.use(helmetMiddleware);
 
 // Middleware
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Body parsing with size bounds to prevent payload attacks
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// Sanitize user inputs against MongoDB query operator injection ($gt, etc.)
+app.use(mongoSanitizeMiddleware);
+
+// Prevent HTTP Parameter Pollution
+app.use(hppMiddleware);
+
+// Apply general API rate limiting to all /api routes
+app.use('/api', apiLimiter);
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -44,8 +67,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes placeholder (to be attached in subsequent tasks)
-// app.use('/api/auth', require('./src/routes/authRoutes'));
+// API Routes
+app.use('/api/auth', require('./src/routes/authRoutes'));
 // app.use('/api/volunteers', require('./src/routes/volunteerRoutes'));
 // app.use('/api/requests', require('./src/routes/requestRoutes'));
 // app.use('/api/assignments', require('./src/routes/assignmentRoutes'));
