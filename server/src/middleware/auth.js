@@ -24,7 +24,12 @@ const protect = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg'
+      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg',
+      {
+        algorithms: ['HS256'],
+        issuer: 'sevasetu-platform',
+        audience: 'sevasetu-client',
+      }
     );
 
     const user = await User.findById(decoded.id);
@@ -103,7 +108,12 @@ const optionalAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg'
+      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg',
+      {
+        algorithms: ['HS256'],
+        issuer: 'sevasetu-platform',
+        audience: 'sevasetu-client',
+      }
     );
     const user = await User.findById(decoded.id);
     if (user && user.isActive) {

@@ -119,6 +119,9 @@ userSchema.methods.generateAuthToken = function () {
     },
     process.env.JWT_SECRET || 'sevasetu_fallback_secret_for_development_key',
     {
+      algorithm: 'HS256',
+      issuer: 'sevasetu-platform',
+      audience: 'sevasetu-client',
       expiresIn: process.env.JWT_EXPIRE || '30d',
     }
   );

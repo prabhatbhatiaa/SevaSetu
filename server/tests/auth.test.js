@@ -253,4 +253,39 @@ describe('Task 4: Authentication and User Management APIs', () => {
       expect(newLogin.body.token).toBeDefined();
     });
   });
+
+  describe('4.5 Security & Hardening Verification', () => {
+    test('Should return security headers (Helmet)', async () => {
+      const res = await request(app).get('/');
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+    });
+
+    test('Should reject tampered or invalid JWT signature', async () => {
+      const tamperedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYwYzcyYjJmOWIwYjExMDAxNThjMTExMSIsInJvbGUiOiJ2b2x1bnRlZXIifQ.tampered_signature_string';
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${tamperedToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Invalid authentication token');
+    });
+
+    test('Should reject JWT issued with mismatched audience or issuer', async () => {
+      const jwt = require('jsonwebtoken');
+      const fakeToken = jwt.sign(
+        { id: new mongoose.Types.ObjectId(), role: USER_ROLES.VOLUNTEER },
+        process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg',
+        { issuer: 'untrusted-issuer', audience: 'wrong-audience', expiresIn: '1h' }
+      );
+
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${fakeToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+  });
 });
