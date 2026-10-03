@@ -257,6 +257,25 @@ const validateCompleteAssignment = [
   handleValidationErrors,
 ];
 
+const validateSubmitReview = [
+  body('requestId')
+    .notEmpty()
+    .withMessage('Service Request ID is required')
+    .isMongoId()
+    .withMessage('Invalid Service Request ID format'),
+  body('rating')
+    .notEmpty()
+    .withMessage('Rating is required')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Rating must be an integer between 1 and 5'),
+  body('feedback')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Feedback cannot exceed 1000 characters'),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateRegister,
@@ -269,4 +288,5 @@ module.exports = {
   validateCreateAssignment,
   validateRespondAssignment,
   validateCompleteAssignment,
+  validateSubmitReview,
 };

@@ -72,8 +72,12 @@ app.use('/api/auth', require('./src/routes/authRoutes'));
 app.use('/api/volunteers', require('./src/routes/volunteerRoutes'));
 app.use('/api/requests', require('./src/routes/requestRoutes'));
 app.use('/api/assignments', require('./src/routes/assignmentRoutes'));
-// app.use('/api/reviews', require('./src/routes/reviewRoutes'));
-// app.use('/api/impact', require('./src/routes/impactRoutes'));
+app.use('/api/reviews', require('./src/routes/reviewRoutes'));
+app.use('/api/impact', require('./src/routes/impactRoutes'));
+app.use('/api/public/impact', (req, res, next) => {
+  req.url = '/statistics';
+  require('./src/routes/impactRoutes')(req, res, next);
+});
 
 // 404 Handler
 app.use((req, res, next) => {
