@@ -10,6 +10,8 @@
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
     "build": "npm run build --prefix client",
     "seed": "npm run seed --prefix server",
+    "seed:clean": "npm run seed:clean --prefix server",
+    "seed:admin": "npm run seed:admin --prefix server",
     "test": "npm run test --prefix server"
   },
   "devDependencies": {

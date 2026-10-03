@@ -1,0 +1,394 @@
+{
+  "admin": {
+    "name": "SevaSetu Administrator",
+    "email": "admin@sevasetu.org",
+    "password": "AdminPassword123!",
+    "role": "admin",
+    "phone": "+919876543200",
+    "location": {
+      "type": "Point",
+      "coordinates": [77.0266, 28.4595],
+      "address": "Central Admin Office, Cyber City",
+      "city": "Gurugram",
+      "state": "Haryana",
+      "pincode": "122002"
+    }
+  },
+  "communityMembers": [
+    {
+      "name": "Sunita Mehra",
+      "email": "sunita.mehra@example.com",
+      "password": "Password123!",
+      "role": "community_member",
+      "phone": "+919810123456",
+      "location": {
+        "type": "Point",
+        "coordinates": [77.038, 28.472],
+        "address": "House 42, Sector 14",
+        "city": "Gurugram",
+        "state": "Haryana",
+        "pincode": "122001"
+      }
+    },
+    {
+      "name": "Aarav Sharma",
+      "email": "aarav.sharma@example.com",
+      "password": "Password123!",
+      "role": "community_member",
+      "phone": "+919820234567",
+      "location": {
+        "type": "Point",
+        "coordinates": [77.095, 28.49],
+        "address": "Apartment 304, DLF Phase 3",
+        "city": "Gurugram",
+        "state": "Haryana",
+        "pincode": "122002"
+      }
+    },
+    {
+      "name": "Rohan Gupta",
+      "email": "rohan.gupta@example.com",
+      "password": "Password123!",
+      "role": "community_member",
+      "phone": "+919830345678",
+      "location": {
+        "type": "Point",
+        "coordinates": [77.206, 28.549],
+        "address": "B-12, Hauz Khas",
+        "city": "New Delhi",
+        "state": "Delhi",
+        "pincode": "110016"
+      }
+    },
+    {
+      "name": "Priya Patel",
+      "email": "priya.patel@example.com",
+      "password": "Password123!",
+      "role": "community_member",
+      "phone": "+919840456789",
+      "location": {
+        "type": "Point",
+        "coordinates": [77.641, 12.978],
+        "address": "100 Feet Road, Indiranagar",
+        "city": "Bengaluru",
+        "state": "Karnataka",
+        "pincode": "560038"
+      }
+    },
+    {
+      "name": "Kavita Nambiar",
+      "email": "kavita.nambiar@example.com",
+      "password": "Password123!",
+      "role": "community_member",
+      "phone": "+919850567890",
+      "location": {
+        "type": "Point",
+        "coordinates": [77.108, 28.432],
+        "address": "Devinder Vihar, Sector 56",
+        "city": "Gurugram",
+        "state": "Haryana",
+        "pincode": "122011"
+      }
+    }
+  ],
+  "volunteers": [
+    {
+      "user": {
+        "name": "Rahul Verma",
+        "email": "rahul.volunteer@example.com",
+        "password": "Password123!",
+        "role": "volunteer",
+        "phone": "+919911122233",
+        "location": {
+          "type": "Point",
+          "coordinates": [77.062, 28.468],
+          "address": "Sector 29 Market Area",
+          "city": "Gurugram",
+          "state": "Haryana",
+          "pincode": "122009"
+        }
+      },
+      "profile": {
+        "skills": [
+          "Computer Repair",
+          "Hardware Setup",
+          "Software Installation",
+          "Online Forms",
+          "Tech Troubleshooting"
+        ],
+        "categories": [
+          "Technical Support",
+          "Document Assistance"
+        ],
+        "serviceRadius": 12,
+        "availability": [
+          { "day": "Saturday", "slots": ["morning", "afternoon"] },
+          { "day": "Sunday", "slots": ["evening"] }
+        ],
+        "bio": "Senior systems engineer volunteering on weekends to help seniors and students with tech & digital literacy.",
+        "rating": 4.9,
+        "ratingCount": 15,
+        "completedTasks": 18
+      }
+    },
+    {
+      "user": {
+        "name": "Ananya Deshmukh",
+        "email": "ananya.volunteer@example.com",
+        "password": "Password123!",
+        "role": "volunteer",
+        "phone": "+919922233344",
+        "location": {
+          "type": "Point",
+          "coordinates": [77.042, 28.466],
+          "address": "Civil Lines, Sector 15",
+          "city": "Gurugram",
+          "state": "Haryana",
+          "pincode": "122001"
+        }
+      },
+      "profile": {
+        "skills": [
+          "Mathematics Tutoring",
+          "English Language",
+          "Homework Help",
+          "Science Tutoring"
+        ],
+        "categories": [
+          "Education & Tutoring",
+          "Basic Community Assistance"
+        ],
+        "serviceRadius": 10,
+        "availability": [
+          { "day": "Monday", "slots": ["evening"] },
+          { "day": "Wednesday", "slots": ["evening"] },
+          { "day": "Saturday", "slots": ["morning"] }
+        ],
+        "bio": "Postgraduate student in Mathematics passionate about providing free tutoring for underprivileged children.",
+        "rating": 4.8,
+        "ratingCount": 11,
+        "completedTasks": 14
+      }
+    },
+    {
+      "user": {
+        "name": "Vikramaditya Rao",
+        "email": "vikram.volunteer@example.com",
+        "password": "Password123!",
+        "role": "volunteer",
+        "phone": "+919933344455",
+        "location": {
+          "type": "Point",
+          "coordinates": [77.085, 28.483],
+          "address": "Oakwood Estate, DLF Phase 2",
+          "city": "Gurugram",
+          "state": "Haryana",
+          "pincode": "122002"
+        }
+      },
+      "profile": {
+        "skills": [
+          "Elderly Care",
+          "Prescription Pickup",
+          "Groceries Delivery",
+          "Emergency Delivery",
+          "Driving"
+        ],
+        "categories": [
+          "Elderly Assistance",
+          "Essential Item Delivery"
+        ],
+        "serviceRadius": 15,
+        "availability": [
+          { "day": "Saturday", "slots": ["morning", "afternoon"] },
+          { "day": "Sunday", "slots": ["morning", "afternoon"] }
+        ],
+        "bio": "Retired bank manager dedicated to supporting elderly residents with medicine deliveries and hospital visits.",
+        "rating": 5.0,
+        "ratingCount": 22,
+        "completedTasks": 27
+      }
+    },
+    {
+      "user": {
+        "name": "Siddharth Roy",
+        "email": "siddharth.volunteer@example.com",
+        "password": "Password123!",
+        "role": "volunteer",
+        "phone": "+919944455566",
+        "location": {
+          "type": "Point",
+          "coordinates": [77.215, 28.535],
+          "address": "Malviya Nagar",
+          "city": "New Delhi",
+          "state": "Delhi",
+          "pincode": "110017"
+        }
+      },
+      "profile": {
+        "skills": [
+          "Gardening",
+          "Waste Segregation",
+          "Tree Plantation",
+          "Household Repairs"
+        ],
+        "categories": [
+          "Environmental Activities",
+          "Local Household Help"
+        ],
+        "serviceRadius": 20,
+        "availability": [
+          { "day": "Sunday", "slots": ["morning", "afternoon"] }
+        ],
+        "bio": "Environmental activist organizing tree planting drives, compost setups, and neighborhood green spaces.",
+        "rating": 4.7,
+        "ratingCount": 8,
+        "completedTasks": 10
+      }
+    },
+    {
+      "user": {
+        "name": "Meenakshi Sundaram",
+        "email": "meenakshi.volunteer@example.com",
+        "password": "Password123!",
+        "role": "volunteer",
+        "phone": "+919955566677",
+        "location": {
+          "type": "Point",
+          "coordinates": [77.623, 12.935],
+          "address": "4th Block, Koramangala",
+          "city": "Bengaluru",
+          "state": "Karnataka",
+          "pincode": "560034"
+        }
+      },
+      "profile": {
+        "skills": [
+          "Document Verification",
+          "Form Filling",
+          "Wheelchair Support",
+          "Accessibility Consultation"
+        ],
+        "categories": [
+          "Document Assistance",
+          "Accessibility Assistance"
+        ],
+        "serviceRadius": 15,
+        "availability": [
+          { "day": "Saturday", "slots": ["morning", "afternoon"] },
+          { "day": "Sunday", "slots": ["morning"] }
+        ],
+        "bio": "NGO counselor helping senior citizens and disabled citizens navigate government documentation and rights.",
+        "rating": 4.9,
+        "ratingCount": 19,
+        "completedTasks": 22
+      }
+    }
+  ],
+  "requests": [
+    {
+      "requesterIndex": 1,
+      "title": "Help senior citizen configure banking app and UPI security",
+      "description": "Grandmother needs guidance setting up mobile banking and security PINs safely without getting confused.",
+      "category": "Technical Support",
+      "requiredSkills": ["Software Installation", "Online Forms"],
+      "urgency": "high",
+      "relativeDaysPreferred": 2,
+      "preferredTime": "evening",
+      "status": "PENDING"
+    },
+    {
+      "requesterIndex": 0,
+      "title": "Emergency prescription medicine pickup from Civil Hospital",
+      "description": "Prescription for blood pressure and insulin needs to be picked up from the hospital counter and delivered.",
+      "category": "Essential Item Delivery",
+      "requiredSkills": ["Prescription Pickup", "Emergency Delivery"],
+      "urgency": "critical",
+      "relativeDaysPreferred": 1,
+      "preferredTime": "morning",
+      "status": "PENDING"
+    },
+    {
+      "requesterIndex": 4,
+      "title": "Class 9 Math and Science weekly tutoring for board exam preparation",
+      "description": "Daughter needs in-person guidance on algebraic equations and science practicals on weekends.",
+      "category": "Education & Tutoring",
+      "requiredSkills": ["Mathematics Tutoring", "Science Tutoring"],
+      "urgency": "medium",
+      "relativeDaysPreferred": 3,
+      "preferredTime": "morning",
+      "status": "ASSIGNED",
+      "assignedVolunteerIndex": 1,
+      "relativeHoursAssignedAgo": 5,
+      "assignmentStatus": "OFFERED",
+      "assignmentNotes": "Ananya was suggested as top 94% match for Math tutoring."
+    },
+    {
+      "requesterIndex": 0,
+      "title": "Accompanying wheelchair-bound resident to clinic follow-up",
+      "description": "Need an energetic volunteer to help with wheelchair handling and accompany resident to orthopedic clinic.",
+      "category": "Elderly Assistance",
+      "requiredSkills": ["Elderly Care", "Driving"],
+      "urgency": "high",
+      "status": "IN_PROGRESS",
+      "assignedVolunteerIndex": 2,
+      "relativeHoursAssignedAgo": 12,
+      "relativeHoursRespondedAgo": 10,
+      "assignmentStatus": "ACCEPTED",
+      "assignmentNotes": "Vikramaditya accepted and is currently assisting resident."
+    },
+    {
+      "requesterIndex": 4,
+      "title": "Pension life certificate digital submission (Jeevan Pramaan)",
+      "description": "Required biometric device and smartphone verification for pensioner Jeevan Pramaan portal submission.",
+      "category": "Document Assistance",
+      "requiredSkills": ["Document Verification", "Online Forms"],
+      "urgency": "medium",
+      "status": "COMPLETED",
+      "assignedVolunteerIndex": 0,
+      "relativeDaysAssignedAgo": 4,
+      "relativeDaysCompletedAgo": 3,
+      "assignmentStatus": "COMPLETED",
+      "assignmentNotes": "Task successfully completed."
+    },
+    {
+      "requesterIndex": 2,
+      "title": "Neighborhood park native sapling plantation drive",
+      "description": "Planted 25 neem and peepal saplings in community park with drip irrigation setup.",
+      "category": "Environmental Activities",
+      "requiredSkills": ["Tree Plantation", "Gardening"],
+      "urgency": "low",
+      "status": "COMPLETED",
+      "assignedVolunteerIndex": 3,
+      "relativeDaysAssignedAgo": 7,
+      "relativeDaysCompletedAgo": 6,
+      "assignmentStatus": "COMPLETED",
+      "assignmentNotes": "Plantation drive successfully organized."
+    },
+    {
+      "requesterIndex": 3,
+      "title": "Assistance filing government disability scholarship paperwork",
+      "description": "Need help reviewing state scholarship application form and uploading scanned certificates.",
+      "category": "Document Assistance",
+      "requiredSkills": ["Form Filling", "Document Verification"],
+      "urgency": "medium",
+      "status": "PENDING"
+    }
+  ],
+  "reviews": [
+    {
+      "requestIndex": 4,
+      "volunteerIndex": 0,
+      "requesterIndex": 4,
+      "rating": 5,
+      "feedback": "Rahul was extremely helpful, patient, and set up the biometric submission within 20 minutes. A true community blessing!"
+    },
+    {
+      "requestIndex": 5,
+      "volunteerIndex": 3,
+      "requesterIndex": 2,
+      "rating": 5,
+      "feedback": "Siddharth brought great energy, native saplings, and taught the children how to care for plants. Fantastic initiative!"
+    }
+  ]
+}
