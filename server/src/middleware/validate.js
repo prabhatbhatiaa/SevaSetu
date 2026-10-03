@@ -216,6 +216,47 @@ const validateUpdateServiceRequest = [
   handleValidationErrors,
 ];
 
+const validateCreateAssignment = [
+  body('requestId')
+    .notEmpty()
+    .withMessage('Service Request ID is required')
+    .isMongoId()
+    .withMessage('Invalid Service Request ID format'),
+  body('volunteerId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid Volunteer ID format'),
+  body('notes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notes cannot exceed 500 characters'),
+  handleValidationErrors,
+];
+
+const validateRespondAssignment = [
+  body('action')
+    .notEmpty()
+    .withMessage('Action is required')
+    .isIn(['accept', 'decline'])
+    .withMessage("Action must be either 'accept' or 'decline'"),
+  body('notes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notes cannot exceed 500 characters'),
+  handleValidationErrors,
+];
+
+const validateCompleteAssignment = [
+  body('notes')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Notes cannot exceed 500 characters'),
+  handleValidationErrors,
+];
+
 module.exports = {
   handleValidationErrors,
   validateRegister,
@@ -225,4 +266,7 @@ module.exports = {
   validateVolunteerProfile,
   validateCreateServiceRequest,
   validateUpdateServiceRequest,
+  validateCreateAssignment,
+  validateRespondAssignment,
+  validateCompleteAssignment,
 };

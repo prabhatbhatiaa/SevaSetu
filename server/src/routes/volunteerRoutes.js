@@ -5,6 +5,7 @@ const {
   updateVolunteerProfile,
   getVolunteers,
   getVolunteerById,
+  getMatchedRequestsForVolunteer,
 } = require('../controllers/volunteerController');
 
 const { protect, authorize } = require('../middleware/auth');
@@ -17,6 +18,13 @@ router.get(
   protect,
   authorize(USER_ROLES.VOLUNTEER, USER_ROLES.ADMIN),
   getMyVolunteerProfile
+);
+
+router.get(
+  '/matched-requests',
+  protect,
+  authorize(USER_ROLES.VOLUNTEER, USER_ROLES.ADMIN),
+  getMatchedRequestsForVolunteer
 );
 
 router.put(

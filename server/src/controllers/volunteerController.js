@@ -1,4 +1,5 @@
-const { VolunteerProfile, User, USER_ROLES } = require('../models');
+const { VolunteerProfile, ServiceRequest, User, USER_ROLES, REQUEST_STATUS } = require('../models');
+const { calculateMatchScore } = require('../algorithms/volunteerMatcher');
 
 /**
  * @desc    Get currently logged in volunteer's profile
@@ -201,9 +202,82 @@ const getVolunteerById = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get matched pending requests tailored for the logged-in volunteer
+ * @route   GET /api/volunteers/matched-requests
+ * @access  Private (Volunteer only)
+ */
+const getMatchedRequestsForVolunteer = async (req, res, next) => {
+  try {
+    const profile = await VolunteerProfile.findOne({ user: req.user._id });
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Volunteer profile not found.',
+      });
+    }
+
+    const { limit = 15, minScore = 20, maxDistance = 50 } = req.query;
+
+    const query = {
+      status: REQUEST_STATUS.PENDING,
+    };
+
+    // Find candidate pending requests within 50km
+    if (
+      profile.location?.coordinates &&
+      Array.isArray(profile.location.coordinates) &&
+      profile.location.coordinates.length === 2
+    ) {
+      query.location = {
+        $nearSphere: {
+          $geometry: {
+            type: 'Point',
+            coordinates: profile.location.coordinates,
+          },
+          $maxDistance: Number(maxDistance) * 1000, // meters
+        },
+      };
+    }
+
+    const candidateRequests = await ServiceRequest.find(query)
+      .populate('requester', 'name avatar city')
+      .limit(50)
+      .lean();
+
+    // Score and rank all candidate requests for this volunteer
+    const scoredMatches = candidateRequests
+      .map((reqDoc) => {
+        const { matchScore, breakdown, explanation } = calculateMatchScore(
+          reqDoc,
+          profile
+        );
+        return {
+          request: reqDoc,
+          matchScore,
+          breakdown,
+          explanation,
+        };
+      })
+      .filter((m) => m.matchScore >= Number(minScore))
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, Number(limit));
+
+    res.status(200).json({
+      success: true,
+      count: scoredMatches.length,
+      data: scoredMatches,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMyVolunteerProfile,
   updateVolunteerProfile,
   getVolunteers,
   getVolunteerById,
+  getMatchedRequestsForVolunteer,
 };
