@@ -4,15 +4,19 @@
   "description": "Community Service Request and Volunteer Matching Platform",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "dev:server": "npm run dev --prefix server",
-    "dev:client": "npm run dev --prefix client",
+    "dev": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:server": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run dev --prefix server",
+    "dev:client": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run dev --prefix client",
+    "server": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run dev --prefix server",
+    "client": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run dev --prefix client",
+    "start": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run start --prefix server",
+    "start:client": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run dev --prefix client",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
-    "build": "npm run build --prefix client",
-    "seed": "npm run seed --prefix server",
-    "seed:clean": "npm run seed:clean --prefix server",
-    "seed:admin": "npm run seed:admin --prefix server",
-    "test": "npm run test --prefix server"
+    "build": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run build --prefix client",
+    "seed": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run seed --prefix server",
+    "seed:clean": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run seed:clean --prefix server",
+    "seed:admin": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run seed:admin --prefix server",
+    "test": "export LD_LIBRARY_PATH=$HOME/.local/lib:$LD_LIBRARY_PATH && npm run test --prefix server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

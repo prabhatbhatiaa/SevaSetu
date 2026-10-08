@@ -1,66 +1,66 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api/axios';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import api, { TOKEN_KEY, UNAUTHORIZED_EVENT } from '../lib/api';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('sevasetu_token') || null);
-  const [loading, setLoading] = useState(true);
+  // Only show a loading state when there is a session to restore.
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
+
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    setUser(null);
+  }, []);
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
-      if (token) {
-        try {
-          const res = await api.get('/auth/me');
-          if (res.data && res.data.success) {
-            setUser(res.data.data);
-          }
-        } catch (err) {
-          console.error('[AuthContext] Failed to load session user:', err.message);
-          logout();
-        }
-      }
-      setLoading(false);
+    if (!localStorage.getItem(TOKEN_KEY)) return undefined;
+
+    let cancelled = false;
+    api
+      .get('/auth/me')
+      .then((response) => {
+        if (!cancelled) setUser(response.data.data);
+      })
+      .catch(() => {
+        if (!cancelled) logout();
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [logout]);
+
+  useEffect(() => {
+    const handleUnauthorized = () => setUser(null);
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
+
+  const value = useMemo(() => {
+    const startSession = async (path, body) => {
+      const { data } = await api.post(path, body);
+      localStorage.setItem(TOKEN_KEY, data.token);
+      setUser(data.user);
+      return data.user;
     };
 
-    fetchCurrentUser();
-  }, [token]);
+    return {
+      user,
+      loading,
+      setUser,
+      logout,
+      login: (email, password) => startSession('/auth/login', { email, password }),
+      register: (details) => startSession('/auth/register', details),
+    };
+  }, [user, loading, logout]);
 
-  const login = async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    if (res.data && res.data.token) {
-      localStorage.setItem('sevasetu_token', res.data.token);
-      localStorage.setItem('sevasetu_user', JSON.stringify(res.data.user));
-      setToken(res.data.token);
-      setUser(res.data.user);
-    }
-    return res.data;
-  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
-  const register = async (userData) => {
-    const res = await api.post('/auth/register', userData);
-    if (res.data && res.data.token) {
-      localStorage.setItem('sevasetu_token', res.data.token);
-      localStorage.setItem('sevasetu_user', JSON.stringify(res.data.user));
-      setToken(res.data.token);
-      setUser(res.data.user);
-    }
-    return res.data;
-  };
-
-  const logout = () => {
-    localStorage.removeItem('sevasetu_token');
-    localStorage.removeItem('sevasetu_user');
-    setToken(null);
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, setUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}
