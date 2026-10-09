@@ -9,16 +9,12 @@ import {
   LayoutGrid,
   ListChecks,
   LogOut,
-  Menu,
-  Moon,
-  Plus,
   Settings,
-  Sun,
   X,
 } from 'lucide-react';
 import { Avatar, Button, Logo, cn } from '../ui';
+import { SiteHeader } from './SiteHeader';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { ROLE_LABELS } from '../../lib/constants';
 import { REQUESTS_CHANGED_EVENT } from '../../lib/hooks';
 
@@ -71,7 +67,6 @@ function NavItem({ item, onNavigate }) {
 
 function Sidebar({ onNavigate }) {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const signOut = () => {
@@ -81,13 +76,7 @@ function Sidebar({ onNavigate }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center px-5">
-        <Link to="/" onClick={onNavigate} aria-label="SevaSetu home">
-          <Logo />
-        </Link>
-      </div>
-
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="Dashboard">
+      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-6" aria-label="Dashboard">
         <div className="space-y-0.5">
           {NAVIGATION[user.role].map((item) => (
             <NavItem key={item.to} item={item} onNavigate={onNavigate} />
@@ -118,16 +107,10 @@ function Sidebar({ onNavigate }) {
             <p className="truncate text-xs text-muted">{ROLE_LABELS[user.role]}</p>
           </div>
         </div>
-        <div className="mt-4 flex gap-2">
-          <Button size="sm" className="flex-1" onClick={toggleTheme}>
-            {theme === 'dark' ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            {theme === 'dark' ? 'Light' : 'Dark'}
-          </Button>
-          <Button size="sm" className="flex-1" onClick={signOut}>
-            <LogOut className="h-3.5 w-3.5" />
-            Sign out
-          </Button>
-        </div>
+        <Button size="sm" className="mt-4 w-full" onClick={signOut}>
+          <LogOut className="h-3.5 w-3.5" />
+          Sign out
+        </Button>
       </div>
     </div>
   );
@@ -158,46 +141,37 @@ export default function AppShell() {
   };
 
   return (
-    <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r bg-canvas lg:block">
+    <div className="min-h-screen pt-16">
+      <SiteHeader onOpenMenu={() => setDrawerOpen(true)} />
+
+      <aside className="fixed bottom-0 left-0 top-16 z-40 hidden w-64 border-r bg-canvas lg:block">
         <Sidebar />
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-canvas/90 px-5 backdrop-blur-xl lg:hidden">
-        <Link to="/dashboard" aria-label="Dashboard">
-          <Logo />
-        </Link>
-        <div className="flex items-center gap-1">
-          {canCreateRequests && (
-            <Button variant="primary" size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" /> New
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-[60] lg:hidden">
           <div className="absolute inset-0 animate-fade-in bg-black/70" onClick={() => setDrawerOpen(false)} />
           <div className="absolute inset-y-0 left-0 w-72 animate-scale-in border-r bg-canvas">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-4 rounded-full p-1.5 text-muted"
-              aria-label="Close menu"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            <div className="flex h-16 items-center justify-between border-b px-5">
+              <Logo />
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="-mr-1.5 rounded-full p-1.5 text-muted"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="h-[calc(100%-4rem)]">
+              <Sidebar onNavigate={() => setDrawerOpen(false)} />
+            </div>
           </div>
         </div>
       )}
 
       <div className="lg:pl-64">
-        <main className="mx-auto max-w-[1180px] px-5 py-10 sm:px-8 lg:px-12 lg:py-14">
+        <main className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
           <Outlet context={{ openCreateRequest: () => setCreating(true) }} />
         </main>
       </div>

@@ -89,6 +89,11 @@
     @apply mx-auto w-full max-w-page px-5 sm:px-8 lg:px-12;
   }
 
+  /* The site header runs wider than page content. */
+  .container-wide {
+    @apply mx-auto w-full max-w-[1560px] px-5 sm:px-8 lg:px-10;
+  }
+
   /* Small label above headings, marked with a saffron dot */
   .eyebrow {
     @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-eyebrow text-muted;

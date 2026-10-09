@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, Moon, Sun, X } from 'lucide-react';
-import { Button, Logo, cn } from '../ui';
+import { Avatar, Button, Logo, cn } from '../ui';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -13,42 +13,31 @@ const NAV_LINKS = [
 ];
 
 /**
- * Public site navigation. On the landing page it starts transparent over the
- * hero and gains a background once the page scrolls.
+ * The one top navigation bar, used on every page: landing, public pages,
+ * sign-in and the dashboard. Same height, background and content everywhere.
+ *
+ * `onOpenMenu` — on the dashboard, the phone menu button opens the dashboard
+ * drawer instead of the site menu.
  */
-export function SiteHeader({ overHero = false }) {
+export function SiteHeader({ onOpenMenu }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 16);
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const solid = scrolled || menuOpen || !overHero;
+  const ThemeIcon = theme === 'dark' ? Sun : Moon;
+  const toggleMenu = () => (onOpenMenu ? onOpenMenu() : setMenuOpen((open) => !open));
 
   return (
-    <header
-      className={cn(
-        'fixed inset-x-0 top-0 z-50 border-b transition-colors duration-300',
-        solid && overHero && 'border-line bg-canvas/95',
-        solid && !overHero && 'border-line bg-canvas/85 backdrop-blur-xl',
-        !solid && 'border-transparent',
-      )}
-    >
-      <div className="container-page flex h-16 items-center justify-between gap-6">
-        <Link to="/" aria-label="SevaSetu home">
+    <header className="fixed inset-x-0 top-0 z-50 border-b bg-canvas/90 backdrop-blur-md">
+      <div className="container-wide flex h-16 items-center justify-between gap-6">
+        <Link to="/" aria-label="SevaSetu home" className="shrink-0">
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-8 lg:flex" aria-label="Main">
+        <nav className="hidden items-center gap-9 lg:flex" aria-label="Main">
           {NAV_LINKS.map((link) => (
             <NavLink
               key={link.label}
@@ -65,14 +54,19 @@ export function SiteHeader({ overHero = false }) {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle colour theme">
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <ThemeIcon className="h-4 w-4" />
           </Button>
           {user ? (
-            <Button variant="primary" size="sm" to="/dashboard" className="h-9 pl-5" arrow>
-              Dashboard
-            </Button>
+            <>
+              <Button variant="primary" size="sm" to="/dashboard" className="h-9 pl-5" arrow>
+                Dashboard
+              </Button>
+              <Link to="/dashboard/settings" aria-label="Your settings" className="ml-1 rounded-full">
+                <Avatar name={user.name} src={user.avatar} size={34} />
+              </Link>
+            </>
           ) : (
             <>
               <Button size="sm" to="/login" className="h-9 px-5">
@@ -85,39 +79,31 @@ export function SiteHeader({ overHero = false }) {
           )}
         </div>
 
-        <button
-          type="button"
-          className="-mr-2 rounded-full p-2 lg:hidden"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-1 lg:hidden">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle colour theme">
+            <ThemeIcon className="h-4 w-4" />
+          </Button>
+          <button
+            type="button"
+            className="-mr-2 rounded-full p-2"
+            onClick={toggleMenu}
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={onOpenMenu ? undefined : menuOpen}
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {menuOpen && (
-        <div className="container-page animate-fade-in border-t pb-6 lg:hidden">
+        <div className="container-wide animate-fade-in border-t pb-6 lg:hidden">
           <nav className="flex flex-col py-2" aria-label="Mobile">
             {NAV_LINKS.map((link) => (
-              <Link
-                key={link.label}
-                to={link.to}
-                onClick={() => setMenuOpen(false)}
-                className="border-b py-4 text-lg tracking-tight"
-              >
+              <Link key={link.label} to={link.to} className="border-b py-4 text-lg tracking-tight">
                 {link.label}
               </Link>
             ))}
           </nav>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="flex w-full items-center justify-between border-b py-4 text-lg tracking-tight"
-          >
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </button>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {user ? (
               <Button variant="primary" to="/dashboard" className="col-span-2">

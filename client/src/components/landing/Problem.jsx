@@ -1,3 +1,5 @@
+import { Scene } from '../three/Scene';
+
 // The kind of messages that get lost today. Illustrative, not real people.
 const MESSAGES = [
   {
@@ -13,26 +15,26 @@ const MESSAGES = [
   },
 ];
 
-/** Act two: the bridge scatters into fragments while this section is on screen. */
+/** The problem: chat bubbles drift apart, and the messages between them never arrive. */
 export function Problem() {
   return (
-    <section data-act="problem" className="flex min-h-[110vh] items-center py-28">
-      <div className="container-page">
-        <div className="max-w-xl">
+    <section data-act="problem" className="py-16 sm:py-20">
+      <div className="container-page grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
+        <div>
           <p className="eyebrow reveal">The problem</p>
-          <h2 className="display reveal mt-6 text-[44px] sm:text-6xl lg:text-7xl">
+          <h2 className="display reveal mt-4 text-[44px] sm:text-6xl">
             Help gets <em>lost</em> in the group chat.
           </h2>
-          <p className="reveal mt-8 text-[17px] leading-relaxed text-muted">
+          <p className="reveal mt-5 max-w-lg text-[17px] leading-relaxed text-muted">
             Small needs — a pension form, a medicine pickup, a phone that won’t connect to UPI — travel through forwards
             and word of mouth. Some get answered. Most quietly scroll away.
           </p>
 
-          <ul className="mt-12 space-y-3" aria-label="Examples of requests that get lost">
+          <ul className="mt-7 space-y-2.5" aria-label="Examples of requests that get lost">
             {MESSAGES.map((message, index) => (
               <li
                 key={message.text}
-                className={`reveal max-w-sm rounded-2xl rounded-bl-md border bg-surface/95 px-4 py-3 ${message.tilt}`}
+                className={`reveal max-w-sm rounded-2xl rounded-bl-md border bg-surface px-4 py-3 ${message.tilt}`}
                 style={{ '--delay': `${150 + index * 120}ms` }}
               >
                 <p className="text-sm leading-snug">{message.text}</p>
@@ -41,6 +43,8 @@ export function Problem() {
             ))}
           </ul>
         </div>
+
+        <Scene name="signals" className="h-[320px] sm:h-[420px] lg:h-[520px]" />
       </div>
     </section>
   );

@@ -9,12 +9,12 @@ export function Categories({ impact }) {
   const totals = Object.fromEntries((impact?.categories ?? []).map((item) => [item.category, item.total]));
 
   return (
-    <section id="categories" data-act="categories" className="scroll-mt-16 py-28 sm:py-36">
+    <section id="categories" data-act="categories" className="scroll-mt-16 py-16 sm:py-20">
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="eyebrow reveal">What people ask for</p>
-            <h2 className="display reveal mt-6 text-[44px] sm:text-6xl">
+            <h2 className="display reveal mt-4 text-[44px] sm:text-6xl">
               Ten kinds of help. <em>One</em> place to ask.
             </h2>
           </div>
@@ -26,7 +26,7 @@ export function Categories({ impact }) {
           </Link>
         </div>
 
-        <ul className="mt-14 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <ul className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
           {CATEGORIES.map((category, index) => {
             const featured = index < 2;
             const count = totals[category.name] ?? 0;
@@ -39,7 +39,7 @@ export function Categories({ impact }) {
                 <TiltCard
                   as={Link}
                   to={`/requests/explore?category=${encodeURIComponent(category.name)}`}
-                  className="group flex h-full min-h-[170px] flex-col rounded-2xl border bg-surface p-5 hover:border-strong"
+                  className="group flex h-full min-h-[150px] flex-col rounded-2xl border bg-surface p-5 hover:border-strong"
                 >
                   <div className="flex items-start justify-between">
                     <span className="flex h-10 w-10 items-center justify-center rounded-full border">
@@ -49,7 +49,7 @@ export function Categories({ impact }) {
                   </div>
                   <h3
                     className={cn(
-                      'mt-auto pt-8 font-medium leading-tight tracking-tight',
+                      'mt-auto pt-6 font-medium leading-tight tracking-tight',
                       featured ? 'text-3xl sm:text-4xl' : 'text-lg',
                     )}
                   >

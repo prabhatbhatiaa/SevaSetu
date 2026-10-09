@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBadge, cn } from '../ui';
 import { CategoryLabel } from '../requests/RequestCard';
 import { RequestProgress } from '../requests/RequestProgress';
+import { Scene } from '../three/Scene';
 
 const STEPS = [
   {
@@ -37,8 +38,8 @@ const STEPS = [
 ];
 
 /**
- * Act four. As you scroll the steps, the 3D scene sends a saffron packet
- * across the bridge, and the small status card follows along.
+ * How it works. As you scroll the steps, a saffron light walks a dotted route
+ * from the requester's home to the volunteer's, and the status card follows.
  */
 export function RequestJourney() {
   const [active, setActive] = useState(0);
@@ -71,48 +72,51 @@ export function RequestJourney() {
   }, []);
 
   const step = STEPS[active];
+  const routeInput = useMemo(() => ({ progress: active / (STEPS.length - 1) }), [active]);
 
   return (
-    <section id="how-it-works" data-act="journey" className="scroll-mt-16 py-28">
+    <section id="how-it-works" data-act="journey" className="scroll-mt-16 py-16 sm:py-20">
       <div className="container-page">
         <p className="eyebrow reveal">How it works</p>
-        <h2 className="display reveal mt-6 text-[44px] sm:text-6xl lg:text-7xl">
+        <h2 className="display reveal mt-4 text-[44px] sm:text-6xl">
           How a request <em>travels</em>.
         </h2>
 
-        <div className="mt-10 grid gap-10 lg:grid-cols-2">
-          <ol>
+        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+          <ol className="order-2 lg:order-1">
             {STEPS.map((item, index) => (
               <li
                 key={item.title}
                 ref={(element) => (stepRefs.current[index] = element)}
                 className={cn(
-                  'flex min-h-[42vh] gap-5 border-t pt-8 transition-opacity duration-500',
-                  index === active ? 'opacity-100' : 'lg:opacity-30',
+                  'flex gap-5 border-t py-7 transition-opacity duration-500 lg:py-9',
+                  index === active ? 'opacity-100' : 'lg:opacity-35',
                 )}
               >
                 <span className="font-serif text-3xl italic text-accent">{index + 1}</span>
                 <div>
-                  <h3 className="text-[30px] font-medium leading-tight tracking-tight sm:text-4xl">{item.title}</h3>
-                  <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-muted">{item.text}</p>
+                  <h3 className="text-[26px] font-medium leading-tight tracking-tight sm:text-3xl">{item.title}</h3>
+                  <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-muted">{item.text}</p>
                 </div>
               </li>
             ))}
           </ol>
 
-          {/* Rides alongside the bridge in the scene, so it stays small. */}
-          <div className="hidden lg:block">
-            <div className="sticky top-[62vh] ml-auto w-80 rounded-2xl border bg-surface/95 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <CategoryLabel category="Document Assistance" />
-                <StatusBadge status={step.status} />
-              </div>
-              <p className="mt-3 font-medium tracking-tight">Help filling pension forms</p>
-              <p key={active} className="mt-1 animate-fade-in text-xs text-muted">
-                {step.note}
-              </p>
-              <div className="mt-5">
-                <RequestProgress status={step.status} />
+          <div className="order-1 lg:order-2">
+            <div className="lg:sticky lg:top-24">
+              <Scene name="route" input={routeInput} className="h-[320px] sm:h-[340px] lg:h-[380px]" />
+              <div className="mx-auto hidden max-w-sm rounded-2xl border bg-surface p-5 lg:block">
+                <div className="flex items-center justify-between gap-3">
+                  <CategoryLabel category="Document Assistance" />
+                  <StatusBadge status={step.status} />
+                </div>
+                <p className="mt-3 font-medium tracking-tight">Help filling pension forms</p>
+                <p key={active} className="mt-1 animate-fade-in text-xs text-muted">
+                  {step.note}
+                </p>
+                <div className="mt-4">
+                  <RequestProgress status={step.status} />
+                </div>
               </div>
             </div>
           </div>

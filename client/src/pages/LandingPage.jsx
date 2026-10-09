@@ -1,6 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SiteHeader } from '../components/layout/SiteHeader';
 import { SiteFooter } from '../components/layout/SiteFooter';
 import { ActRail } from '../components/landing/ActRail';
@@ -16,12 +15,10 @@ import { ClosingCta } from '../components/landing/ClosingCta';
 import api from '../lib/api';
 import { useDocumentTitle, useFetch, useReveal } from '../lib/hooks';
 
-// three.js is heavy, so the scene loads after the page itself.
-const BridgeScene = lazy(() => import('../components/three/BridgeScene'));
-
 /**
- * The landing page is one continuous scene: the 3D bridge sits behind every
- * section, and each `[data-act]` section moves the camera to its own view.
+ * The landing page. Several sections carry their own small 3D scene, all
+ * drawn from the same points of light and palette so they read as one story:
+ * the bridge, lost messages, a pin, a route, an orbit, a skyline, the bridge.
  */
 export default function LandingPage() {
   const rootRef = useRef(null);
@@ -41,18 +38,10 @@ export default function LandingPage() {
 
   return (
     <div ref={rootRef} className="relative">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <ErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
-            <BridgeScene mode="landing" />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
-
-      <SiteHeader overHero />
+      <SiteHeader />
       <ActRail />
 
-      <main className="relative z-10">
+      <main>
         <Hero impact={impact} />
         <Problem />
         <Promise />
@@ -60,13 +49,11 @@ export default function LandingPage() {
         <Categories impact={impact} />
         <MatchingEngine />
         <Roles />
-        <ImpactStrip summary={impact?.summary} />
+        <ImpactStrip summary={impact?.summary} recent={impact?.recentImpactFeed} />
         <ClosingCta />
       </main>
 
-      <div className="relative z-10 bg-canvas">
-        <SiteFooter />
-      </div>
+      <SiteFooter />
     </div>
   );
 }

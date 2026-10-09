@@ -32,23 +32,23 @@ const ROLES = [
 /** Act seven: the three ways in, as cards that lean toward the pointer. */
 export function Roles() {
   return (
-    <section id="roles" data-act="roles" className="scroll-mt-16 py-28 sm:py-36">
+    <section id="roles" data-act="roles" className="scroll-mt-16 py-16 sm:py-20">
       <div className="container-page">
         <p className="eyebrow reveal">Who it’s for</p>
-        <h2 className="display reveal mt-6 max-w-3xl text-[44px] sm:text-6xl">
+        <h2 className="display reveal mt-4 max-w-3xl text-[44px] sm:text-6xl">
           Built for <em>every</em> side of the bridge.
         </h2>
 
-        <ul className="mt-14 grid gap-4 md:grid-cols-3">
+        <ul className="mt-8 grid gap-4 md:grid-cols-3">
           {ROLES.map((role, index) => (
             <li key={role.name} className="reveal" style={{ '--delay': `${index * 100}ms` }}>
-              <TiltCard className="flex h-full flex-col rounded-3xl border bg-surface p-7">
+              <TiltCard className="flex h-full flex-col rounded-3xl border bg-surface p-6">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-canvas">
                   <role.icon className="h-5 w-5" strokeWidth={1.75} />
                 </span>
-                <h3 className="mt-10 text-2xl font-medium tracking-tight">{role.name}</h3>
+                <h3 className="mt-6 text-2xl font-medium tracking-tight">{role.name}</h3>
                 <p className="mt-2 text-[15px] text-muted">{role.text}</p>
-                <ul className="mb-8 mt-6 space-y-2.5 border-t pt-6 text-sm">
+                <ul className="mb-6 mt-5 space-y-2.5 border-t pt-5 text-sm">
                   {role.features.map((feature) => (
                     <li key={feature} className="flex gap-3">
                       <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent" />
