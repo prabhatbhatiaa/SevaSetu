@@ -18,33 +18,58 @@ const deckHeight = (x) => 1.1 * (1 - (x / HALF_SPAN) ** 2) - 0.1;
 const archRadius = (x) => 0.75 + 0.95 * Math.sin((Math.PI * (x + HALF_SPAN)) / (2 * HALF_SPAN));
 const spanOf = (x) => Math.min(1, Math.max(0, (x + HALF_SPAN) / (2 * HALF_SPAN)));
 
+// Tricolor palettes for the bridge: Saffron (kesari), Pure White / Warm Ivory, and India Green.
+// Balanced and delicate so they maintain the luminous dot-cloud aesthetic in both dark and light modes.
+const TRICOLOR = {
+  dark: {
+    saffron: '#ff7722', // Kesari / warm radiant saffron
+    white: '#f5f5f7',   // Luminous white
+    green: '#1cb059',   // India green
+  },
+  light: {
+    saffron: '#d95a10', // Rich saffron readable on light canvas
+    white: '#3c3a36',   // Deep ink/charcoal equivalent for light contrast
+    green: '#15803d',   // Forest india green
+  },
+};
+
 function buildStructure(random) {
   const cloud = new Cloud();
 
   // Ribs: semicircular arches standing on the deck.
+  // The upper arc touches Saffron, the middle transitions to White, and base/deck touches Green.
   for (let x = -HALF_SPAN; x <= HALF_SPAN + 0.001; x += 0.32) {
     const radius = archRadius(x);
     const deck = deckHeight(x);
     for (let step = 0; step <= 26; step += 1) {
       const angle = (step / 26) * Math.PI;
-      cloud.add(x, deck + Math.sin(angle) * radius * 0.95, Math.cos(angle) * radius, {
-        shade: random(0.55, 1),
+      const sinA = Math.sin(angle);
+      // Height proportion on the arch: 0 = base, 1 = top apex
+      const kind = sinA > 0.65 ? 10 : sinA > 0.3 ? 11 : 12;
+      cloud.add(x, deck + sinA * radius * 0.95, Math.cos(angle) * radius, {
+        kind,
+        shade: random(0.65, 1),
         size: 0.075,
         span: spanOf(x),
       });
     }
+    // Lower cross deck ties (deck level -> Green / anchor)
     for (let step = -3; step <= 3; step += 1) {
-      cloud.add(x, deck, (step / 3) * radius, { shade: random(0.7, 1), size: 0.06, span: spanOf(x) });
+      cloud.add(x, deck, (step / 3) * radius, { kind: 12, shade: random(0.65, 0.95), size: 0.06, span: spanOf(x) });
     }
   }
 
   // Rails along the length of the bridge.
+  // Lower rails (rail 0, 1, 5, 6) = Green, Middle rails (rail 2, 4) = White, Top crown rail (rail 3) = Saffron
   for (let rail = 0; rail <= 6; rail += 1) {
     const angle = (rail / 6) * Math.PI;
+    const sinA = Math.sin(angle);
+    const kind = sinA > 0.75 ? 10 : sinA > 0.35 ? 11 : 12;
     for (let x = -HALF_SPAN; x <= HALF_SPAN; x += 0.07) {
       const radius = archRadius(x);
-      cloud.add(x, deckHeight(x) + Math.sin(angle) * radius * 0.95, Math.cos(angle) * radius, {
-        shade: random(0.55, 1),
+      cloud.add(x, deckHeight(x) + sinA * radius * 0.95, Math.cos(angle) * radius, {
+        kind,
+        shade: random(0.6, 1),
         size: rail % 3 === 0 ? 0.07 : 0.045,
         span: spanOf(x),
       });
@@ -52,18 +77,22 @@ function buildStructure(random) {
   }
 
   // Suspension cables and hangers.
+  // Upper sweeping catenary cables = Saffron; vertical hangers gradient down through White to Green deck.
   for (const side of [-1, 1]) {
     const z = 2.3 * side;
     const cableHeight = (x) => deckHeight(x) + 1.7 + 1.2 * (1 - (x / (HALF_SPAN + 1.2)) ** 2);
     for (let x = -HALF_SPAN - 1; x <= HALF_SPAN + 1; x += 0.06) {
-      cloud.add(x, cableHeight(x), z, { shade: random(0.75, 1), size: 0.075, span: spanOf(x) });
+      cloud.add(x, cableHeight(x), z, { kind: 10, shade: random(0.8, 1), size: 0.075, span: spanOf(x) });
     }
     for (let x = -HALF_SPAN + 0.3; x <= HALF_SPAN; x += 0.64) {
       const top = cableHeight(x);
       const bottom = deckHeight(x);
       for (let step = 0; step <= 7; step += 1) {
-        cloud.add(x, bottom + ((top - bottom) * step) / 7, z, {
-          shade: random(0.4, 0.7),
+        const frac = step / 7;
+        const kind = frac > 0.6 ? 10 : frac > 0.25 ? 11 : 12;
+        cloud.add(x, bottom + (top - bottom) * frac, z, {
+          kind,
+          shade: random(0.45, 0.75),
           size: 0.045,
           span: spanOf(x),
         });
@@ -142,17 +171,104 @@ function createPackets(random, count = 12) {
 
 const DEFAULT_FIT = { x: 0.5, y: 0.5, fill: 0.88, pitch: 0.2 };
 
+/**
+ * Creates custom material for the bridge structure supporting tricolor highlights.
+ * Kind indices 10, 11, 12 map to Saffron, White, and Green respectively, while
+ * preserving default ink, warm, cool, accent palette values for 0..3.
+ */
+function createBridgeMaterial(baseMaterial) {
+  const mat = baseMaterial.clone();
+
+  const customVertexShader = /* glsl */ `
+    attribute float aKind;   // palette slot
+    attribute float aShade;  // 0–1 brightness
+    attribute float aSize;
+    attribute float aSeed;   // 0–1, per point (or per group)
+    attribute float aSpan;   // 0–1 along a path; -1 if not on one
+    attribute vec3 aFrom;    // where the point starts before it settles
+
+    uniform float uTime;
+    uniform float uScale;
+    uniform float uOpacity;
+    uniform float uLight;    // 1 on the light theme
+    uniform float uMorph;    // 0 = at aFrom, 1 = settled
+    uniform float uPulse;    // strength of the light travelling along paths
+    uniform float uTrail;    // paths are lit up to this span (-1 = off)
+    uniform float uMaxSize;
+    uniform vec3 uPalette[4];
+    uniform vec3 uTricolor[3]; // 0: Saffron, 1: White, 2: Green
+
+    varying vec3 vColor;
+    varying float vAlpha;
+
+    void main() {
+      float delay = aSeed * 0.4;
+      float settled = smoothstep(delay, delay + 0.6, uMorph);
+      vec4 view = modelViewMatrix * vec4(mix(aFrom, position, settled), 1.0);
+
+      float onPath = step(0.0, aSpan);
+      float pulse = smoothstep(0.12, 0.0, fract(aSpan - uTime * 0.06)) * uPulse * onPath * settled;
+      float trail = uTrail >= 0.0 ? step(aSpan, uTrail) * onPath : 0.0;
+      float glow = max(pulse * 0.6, trail);
+
+      vec3 base;
+      if (aKind >= 9.5) {
+        int triIndex = clamp(int(aKind - 9.5), 0, 2);
+        base = uTricolor[triIndex];
+      } else {
+        base = uPalette[int(aKind + 0.5)];
+      }
+
+      float twinkle = 0.88 + 0.12 * sin(uTime * 1.4 + aSeed * 6.2831);
+      vec3 color = uLight > 0.5 ? base : base * aShade * twinkle;
+      vColor = mix(color, uPalette[3], glow * 0.7);
+
+      float alpha = uLight > 0.5 ? mix(0.24, 0.9, aShade) : 0.92;
+      vAlpha = max(alpha, glow * 0.9) * uOpacity * step(0.0001, aSize);
+
+      float size = aSize * (uLight > 0.5 ? 0.88 : 1.0) * (1.0 + glow * 0.5);
+      gl_PointSize = clamp(size * uScale / -view.z, 1.0, uMaxSize);
+      gl_Position = projectionMatrix * view;
+    }
+  `;
+
+  mat.vertexShader = customVertexShader;
+  mat.uniforms.uTricolor = {
+    value: [
+      new THREE.Color(TRICOLOR.dark.saffron),
+      new THREE.Color(TRICOLOR.dark.white),
+      new THREE.Color(TRICOLOR.dark.green),
+    ],
+  };
+
+  return mat;
+}
+
 export default function setupBridge({ scene, camera, material }) {
   const random = seededRandom(7);
   const world = new THREE.Group();
   world.scale.setScalar(0.82);
   scene.add(world);
 
-  world.add(new THREE.Points(buildStructure(random).geometry(), material({ pulse: 1 })));
+  const baseStructureMat = material({ pulse: 1 });
+  const structureMat = createBridgeMaterial(baseStructureMat);
+
+  world.add(new THREE.Points(buildStructure(random).geometry(), structureMat));
   const packets = createPackets(random);
   world.add(new THREE.Points(packets.geometry, material()));
   const dust = new THREE.Points(addDust(new Cloud(), { random, count: 260 }).geometry(), material());
   scene.add(dust);
+
+  const syncThemeTricolor = () => {
+    const isLight = !document.documentElement.classList.contains('dark');
+    const colors = TRICOLOR[isLight ? 'light' : 'dark'];
+    structureMat.uniforms.uTricolor.value[0].set(colors.saffron);
+    structureMat.uniforms.uTricolor.value[1].set(colors.white);
+    structureMat.uniforms.uTricolor.value[2].set(colors.green);
+  };
+  syncThemeTricolor();
+  const themeObserver = new MutationObserver(syncThemeTricolor);
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
   return {
     update({ time, delta, pointer, input, aspect }) {

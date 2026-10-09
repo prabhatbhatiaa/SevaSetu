@@ -14,7 +14,7 @@ export function Hero({ impact }) {
   return (
     <section
       data-act="hero"
-      className="relative flex min-h-[100svh] flex-col items-center overflow-hidden px-5 pb-10 pt-24 text-center sm:pt-28"
+      className="relative flex min-h-[100svh] flex-col items-center overflow-hidden px-5 pb-10 pt-32 text-center sm:pt-36 lg:pt-40"
     >
       <Scene name="bridge" input={HERO_FIT} className="absolute inset-0" />
 
@@ -24,7 +24,7 @@ export function Hero({ impact }) {
       </p>
 
       <h1
-        className="display relative mt-5 animate-fade-up text-[44px] sm:text-6xl lg:text-[76px]"
+        className="display relative mt-6 animate-fade-up text-[44px] sm:text-6xl lg:text-[76px]"
         style={{ animationDelay: '100ms' }}
       >
         Need help?
@@ -33,7 +33,7 @@ export function Hero({ impact }) {
       </h1>
 
       {/* The bridge is drawn here by the scene behind. */}
-      <div className="min-h-[28vh] flex-1" aria-hidden="true" />
+      <div className="min-h-[22vh] sm:min-h-[26vh] flex-1" aria-hidden="true" />
 
       <p
         className="relative max-w-md animate-fade-up text-[15px] leading-relaxed text-muted sm:text-[17px]"
