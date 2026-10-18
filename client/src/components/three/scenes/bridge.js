@@ -172,9 +172,9 @@ function createPackets(random, count = 12) {
 const DEFAULT_FIT = { x: 0.5, y: 0.5, fill: 0.88, pitch: 0.2 };
 
 /**
- * Creates custom material for the bridge structure supporting tricolor highlights.
- * Kind indices 10, 11, 12 map to Saffron, White, and Green respectively, while
- * preserving default ink, warm, cool, accent palette values for 0..3.
+ * Creates custom material for the bridge structure supporting tricolor highlights
+ * and smooth cursor particle interaction (cursor wave, displacement, and glow).
+ * Kind indices 10, 11, 12 map to Saffron, White, and Green respectively.
  */
 function createBridgeMaterial(baseMaterial) {
   const mat = baseMaterial.clone();
@@ -196,7 +196,9 @@ function createBridgeMaterial(baseMaterial) {
     uniform float uTrail;    // paths are lit up to this span (-1 = off)
     uniform float uMaxSize;
     uniform vec3 uPalette[4];
-    uniform vec3 uTricolor[3]; // 0: Saffron, 1: White, 2: Green
+    uniform vec3 uTricolor[3];  // 0: Saffron, 1: White, 2: Green
+    uniform vec3 uPointerWorld; // Interactive cursor position projected in world space
+    uniform float uPointerActive;
 
     varying vec3 vColor;
     varying float vAlpha;
@@ -204,7 +206,33 @@ function createBridgeMaterial(baseMaterial) {
     void main() {
       float delay = aSeed * 0.4;
       float settled = smoothstep(delay, delay + 0.6, uMorph);
-      vec4 view = modelViewMatrix * vec4(mix(aFrom, position, settled), 1.0);
+      vec3 targetPos = position;
+
+      // --- Cursor Physics & Wave Displacement ---
+      // Transform targetPos into world space using modelMatrix
+      vec4 worldPos = modelMatrix * vec4(targetPos, 1.0);
+      float dCursor = distance(worldPos.xyz, uPointerWorld);
+
+      // Repulsion bubble radius = 2.4 units
+      float influence = smoothstep(2.4, 0.0, dCursor) * uPointerActive;
+
+      // Displace particle away from cursor with a buoyant organic ripple
+      vec3 pushDir = worldPos.xyz - uPointerWorld;
+      float len = length(pushDir);
+      if (len > 0.001) {
+        pushDir = pushDir / len;
+      } else {
+        pushDir = vec3(0.0, 1.0, 0.0);
+      }
+
+      // Harmonic wave ripple that excites particles near the cursor
+      float wave = sin(dCursor * 4.5 - uTime * 6.0 + aSeed * 6.28) * 0.12 * influence;
+      vec3 displacement = (pushDir * influence * 0.55) + vec3(0.0, wave + influence * 0.28, 0.0);
+
+      // Apply displacement in local object coordinates
+      vec3 displacedPos = targetPos + (inverse(mat3(modelMatrix)) * displacement);
+
+      vec4 view = modelViewMatrix * vec4(mix(aFrom, displacedPos, settled), 1.0);
 
       float onPath = step(0.0, aSpan);
       float pulse = smoothstep(0.12, 0.0, fract(aSpan - uTime * 0.06)) * uPulse * onPath * settled;
@@ -219,15 +247,18 @@ function createBridgeMaterial(baseMaterial) {
         base = uPalette[int(aKind + 0.5)];
       }
 
-      float twinkle = 0.88 + 0.12 * sin(uTime * 1.4 + aSeed * 6.2831);
+      // Particles brighten and shimmer as cursor hovers near them
+      float cursorGlow = influence * 0.75;
+      float twinkle = (0.88 + 0.12 * sin(uTime * 1.4 + aSeed * 6.2831)) * (1.0 + cursorGlow * 0.85);
       vec3 color = uLight > 0.5 ? base : base * aShade * twinkle;
-      vColor = mix(color, uPalette[3], glow * 0.7);
+      vColor = mix(color, uPalette[3], clamp(glow * 0.7 + cursorGlow * 0.45, 0.0, 1.0));
 
       float alpha = uLight > 0.5 ? mix(0.24, 0.9, aShade) : 0.92;
-      vAlpha = max(alpha, glow * 0.9) * uOpacity * step(0.0001, aSize);
+      vAlpha = clamp(max(alpha, glow * 0.9) * uOpacity * step(0.0001, aSize) + cursorGlow * 0.35, 0.0, 1.0);
 
-      float size = aSize * (uLight > 0.5 ? 0.88 : 1.0) * (1.0 + glow * 0.5);
-      gl_PointSize = clamp(size * uScale / -view.z, 1.0, uMaxSize);
+      // Particles expand slightly when energized by cursor
+      float size = aSize * (uLight > 0.5 ? 0.88 : 1.0) * (1.0 + glow * 0.5 + cursorGlow * 0.65);
+      gl_PointSize = clamp(size * uScale / -view.z, 1.0, uMaxSize * 1.25);
       gl_Position = projectionMatrix * view;
     }
   `;
@@ -240,6 +271,8 @@ function createBridgeMaterial(baseMaterial) {
       new THREE.Color(TRICOLOR.dark.green),
     ],
   };
+  mat.uniforms.uPointerWorld = { value: new THREE.Vector3(0, -999, 0) };
+  mat.uniforms.uPointerActive = { value: 0 };
 
   return mat;
 }
@@ -270,8 +303,14 @@ export default function setupBridge({ scene, camera, material }) {
   const themeObserver = new MutationObserver(syncThemeTricolor);
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
+  // Raycaster to calculate 3D pointer world coordinates at the bridge plane (z ~ 0)
+  const raycaster = new THREE.Raycaster();
+  const bridgePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const hitPoint = new THREE.Vector3();
+  const currentPointerWorld = new THREE.Vector3(0, -999, 0);
+
   return {
-    update({ time, delta, pointer, input, aspect }) {
+    update({ time, delta, pointer, input, aspect, reduced }) {
       const fit = { ...DEFAULT_FIT, ...input.fit, ...(aspect < 0.9 ? input.fit?.portrait : null) };
       frameCamera(camera, {
         target: [0, 0.4, 0],
@@ -283,9 +322,31 @@ export default function setupBridge({ scene, camera, material }) {
         pitch: fit.pitch - pointer.y * 0.04,
         yaw: pointer.x * 0.08,
       });
+
       world.rotation.y = -0.16 + Math.sin(time * 0.12) * 0.06;
       dust.rotation.y = time * 0.008;
       packets.update(time, delta);
+
+      // Compute interactive cursor coordinates in world space
+      if (!reduced && pointer && (Math.abs(pointer.x) > 0.001 || Math.abs(pointer.y) > 0.001)) {
+        raycaster.setFromCamera(new THREE.Vector2(pointer.x, pointer.y), camera);
+        if (raycaster.ray.intersectPlane(bridgePlane, hitPoint)) {
+          // Smoothly interpolate cursor target
+          currentPointerWorld.lerp(hitPoint, 0.2);
+          structureMat.uniforms.uPointerWorld.value.copy(currentPointerWorld);
+          structureMat.uniforms.uPointerActive.value = THREE.MathUtils.lerp(
+            structureMat.uniforms.uPointerActive.value,
+            1.0,
+            0.1,
+          );
+        }
+      } else {
+        structureMat.uniforms.uPointerActive.value = THREE.MathUtils.lerp(
+          structureMat.uniforms.uPointerActive.value,
+          0.0,
+          0.05,
+        );
+      }
     },
   };
 }
