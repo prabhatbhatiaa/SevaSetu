@@ -9,6 +9,7 @@ const {
 } = require('../controllers/assignmentController');
 
 const { protect } = require('../middleware/auth');
+const { writeLimiter } = require('../middleware/security');
 const {
   validateCreateAssignment,
   validateRespondAssignment,
@@ -17,12 +18,12 @@ const {
 
 router
   .route('/')
-  .post(protect, validateCreateAssignment, createAssignment)
+  .post(protect, writeLimiter, validateCreateAssignment, createAssignment)
   .get(protect, getAssignments);
 
 router.route('/:id').get(protect, getAssignmentById);
 
-router.put('/:id/respond', protect, validateRespondAssignment, respondToAssignment);
-router.put('/:id/complete', protect, validateCompleteAssignment, completeAssignment);
+router.put('/:id/respond', protect, writeLimiter, validateRespondAssignment, respondToAssignment);
+router.put('/:id/complete', protect, writeLimiter, validateCompleteAssignment, completeAssignment);
 
 module.exports = router;

@@ -10,6 +10,9 @@ dotenv.config();
 // Initialize express app
 const app = express();
 
+// Enable trust proxy (essential for rate limiting and secure cookies behind Nginx/Render/Railway)
+app.set('trust proxy', 1);
+
 // Connect to MongoDB (skip auto-connect in test mode so tests manage their own isolated database)
 if (process.env.NODE_ENV !== 'test') {
   connectDB();

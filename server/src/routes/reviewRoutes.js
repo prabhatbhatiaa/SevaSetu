@@ -8,11 +8,12 @@ const {
 } = require('../controllers/reviewController');
 
 const { protect } = require('../middleware/auth');
+const { writeLimiter } = require('../middleware/security');
 const { validateSubmitReview } = require('../middleware/validate');
 
 router
   .route('/')
-  .post(protect, validateSubmitReview, createReview)
+  .post(protect, writeLimiter, validateSubmitReview, createReview)
   .get(getReviews);
 
 router.get('/volunteer/:volunteerId', getVolunteerReviews);
