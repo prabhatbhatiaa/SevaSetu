@@ -19,12 +19,25 @@ export function LogoMark({ className = 'h-7 w-7' }) {
 }
 
 /** Wordmark: "Seva" (service) in the sans, "setu" (bridge) in the serif italic. */
-export function Logo({ className }) {
+export function Logo({ className, collapsed = false }) {
   return (
     <span className={cn('inline-flex items-center gap-2 text-ink', className)}>
-      <LogoMark />
-      <span className="text-[19px] font-semibold tracking-tight">
-        Seva<span className="font-serif text-[21px] font-normal italic tracking-normal">setu</span>
+      <LogoMark className={cn('transition-all', collapsed ? 'h-6 w-6' : 'h-7 w-7')} />
+      <span
+        className={cn(
+          'font-semibold tracking-tight transition-all origin-left',
+          collapsed ? 'text-[17px]' : 'text-[19px]'
+        )}
+      >
+        Seva
+        <span
+          className={cn(
+            'font-serif font-normal italic tracking-normal transition-all',
+            collapsed ? 'text-[19px]' : 'text-[21px]'
+          )}
+        >
+          setu
+        </span>
       </span>
     </span>
   );
