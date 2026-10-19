@@ -14,7 +14,7 @@ const NAV_LINKS = [
 
 /**
  * Site navigation bar:
- * - On landing page: full-width end-to-end bar at top; smoothly transitions to a minimal floating dock on scroll.
+ * - On landing, impact, and explore requests pages: full-width bar at top; smoothly transitions to a minimal floating dock on scroll.
  * - On all other pages: permanent full-width end-to-end bar.
  */
 export function SiteHeader({ onOpenMenu }) {
@@ -24,13 +24,14 @@ export function SiteHeader({ onOpenMenu }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  const isLandingPage = pathname === '/';
+  // Enable scroll-to-dock on landing, impact, and explore requests pages
+  const isDockPage = pathname === '/' || pathname === '/impact' || pathname.startsWith('/requests');
 
   useEffect(() => setMenuOpen(false), [pathname]);
 
   // Buttery smooth scroll detection with hysteresis (80px enter / 40px exit)
   useEffect(() => {
-    if (!isLandingPage) {
+    if (!isDockPage) {
       setIsScrolled(false);
       return;
     }
@@ -50,12 +51,12 @@ export function SiteHeader({ onOpenMenu }) {
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLandingPage]);
+  }, [isDockPage, pathname]);
 
   const ThemeIcon = theme === 'dark' ? Sun : Moon;
   const toggleMenu = () => (onOpenMenu ? onOpenMenu() : setMenuOpen((open) => !open));
 
-  const isDock = isLandingPage && isScrolled;
+  const isDock = isDockPage && isScrolled;
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 pointer-events-none">
