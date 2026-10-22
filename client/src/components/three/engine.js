@@ -229,7 +229,8 @@ export function mountScene(container, setup, getInput = () => ({})) {
   }
 
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const isMobileScreen = (container.clientWidth || window.innerWidth || 1024) < 640;
+  let pixelRatio = Math.min(window.devicePixelRatio || 1, isMobileScreen ? 1.75 : 2);
   renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(0x000000, 0);
   renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
@@ -284,12 +285,38 @@ export function mountScene(container, setup, getInput = () => ({})) {
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(container);
 
-  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0, active: false };
   const handlePointer = (event) => {
+    pointer.active = true;
     pointer.targetX = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.targetY = (event.clientY / window.innerHeight) * 2 - 1;
   };
+  const handlePointerLeave = () => {
+    pointer.active = false;
+    pointer.targetX = 0;
+    pointer.targetY = 0;
+  };
+  const handleTouch = (event) => {
+    if (event.touches && event.touches.length > 0) {
+      pointer.active = true;
+      const touch = event.touches[0];
+      pointer.targetX = (touch.clientX / window.innerWidth) * 2 - 1;
+      pointer.targetY = (touch.clientY / window.innerHeight) * 2 - 1;
+    }
+  };
+  const handleTouchEnd = () => {
+    pointer.active = false;
+    pointer.targetX = 0;
+    pointer.targetY = 0;
+  };
+
   window.addEventListener('pointermove', handlePointer, { passive: true });
+  window.addEventListener('pointerdown', handlePointer, { passive: true });
+  window.addEventListener('pointerleave', handlePointerLeave, { passive: true });
+  window.addEventListener('touchstart', handleTouch, { passive: true });
+  window.addEventListener('touchmove', handleTouch, { passive: true });
+  window.addEventListener('touchend', handleTouchEnd, { passive: true });
+  window.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
   let visible = false;
   let firstShownAt = null;
@@ -367,6 +394,12 @@ export function mountScene(container, setup, getInput = () => ({})) {
     resizeObserver.disconnect();
     visibilityObserver.disconnect();
     window.removeEventListener('pointermove', handlePointer);
+    window.removeEventListener('pointerdown', handlePointer);
+    window.removeEventListener('pointerleave', handlePointerLeave);
+    window.removeEventListener('touchstart', handleTouch);
+    window.removeEventListener('touchmove', handleTouch);
+    window.removeEventListener('touchend', handleTouchEnd);
+    window.removeEventListener('touchcancel', handleTouchEnd);
     scene.traverse((object) => {
       object.geometry?.dispose();
       object.material?.dispose();

@@ -158,42 +158,47 @@ function createPackets(random, count = 12) {
       const onBridge = Math.abs(x) < HALF_SPAN;
       const width = onBridge ? 0.35 + 0.65 * Math.sin((Math.PI * (x + HALF_SPAN)) / (2 * HALF_SPAN)) : 1.4;
       const y = onBridge
-        ? deckHeight(x) + 0.2 + packet.lift + Math.sin(time * 2 + packet.seed) * 0.04
-        : 0.1 + packet.lift * 0.4 + Math.sin(time + packet.seed) * 0.08;
-      positions.set([x, y, packet.lane * width], index * 3);
-      from.set([x, y, packet.lane * width], index * 3);
+        ? deckHeight(x) + packet.lift + Math.sin(time * 3 + packet.seed) * 0.06
+        : -0.2 + packet.lift * 0.5 + Math.sin(time * 1.5 + packet.seed) * 0.05;
+      const z = packet.lane * width + Math.cos(time * 2 + packet.seed) * 0.08;
+      const i3 = index * 3;
+      positions[i3] = x;
+      positions[i3 + 1] = y;
+      positions[i3 + 2] = z;
+      from[i3] = x;
+      from[i3 + 1] = y;
+      from[i3 + 2] = z;
     });
     geometry.attributes.position.needsUpdate = true;
     geometry.attributes.aFrom.needsUpdate = true;
   };
+
   return { geometry, update };
 }
 
-const DEFAULT_FIT = { x: 0.5, y: 0.5, fill: 0.88, pitch: 0.2 };
+const DEFAULT_FIT = { x: 0.5, y: 0.5, fill: 0.85, pitch: 0.2 };
 
 /**
- * Creates custom material for the bridge structure supporting tricolor highlights
- * and smooth cursor particle interaction (cursor wave, displacement, and glow).
- * Kind indices 10, 11, 12 map to Saffron, White, and Green respectively.
+ * Creates custom shader material for bridge structure with cursor wave physics and tricolor support.
  */
 function createBridgeMaterial(baseMaterial) {
   const mat = baseMaterial.clone();
 
   const customVertexShader = /* glsl */ `
-    attribute float aKind;   // palette slot
-    attribute float aShade;  // 0–1 brightness
+    attribute float aKind;
+    attribute float aShade;
     attribute float aSize;
-    attribute float aSeed;   // 0–1, per point (or per group)
-    attribute float aSpan;   // 0–1 along a path; -1 if not on one
-    attribute vec3 aFrom;    // where the point starts before it settles
+    attribute float aSeed;
+    attribute float aSpan;
+    attribute vec3 aFrom;
 
     uniform float uTime;
     uniform float uScale;
     uniform float uOpacity;
-    uniform float uLight;    // 1 on the light theme
-    uniform float uMorph;    // 0 = at aFrom, 1 = settled
-    uniform float uPulse;    // strength of the light travelling along paths
-    uniform float uTrail;    // paths are lit up to this span (-1 = off)
+    uniform float uLight;
+    uniform float uMorph;
+    uniform float uPulse;
+    uniform float uTrail;
     uniform float uMaxSize;
     uniform vec3 uPalette[4];
     uniform vec3 uTricolor[3];  // 0: Saffron, 1: White, 2: Green
@@ -206,26 +211,15 @@ function createBridgeMaterial(baseMaterial) {
     void main() {
       float delay = aSeed * 0.4;
       float settled = smoothstep(delay, delay + 0.6, uMorph);
-      vec3 targetPos = position;
+      vec3 targetPos = mix(aFrom, position, settled);
 
-      // --- Cursor Physics & Wave Displacement ---
-      // Transform targetPos into world space using modelMatrix
+      // Model coordinates -> world coordinates for pointer interaction
       vec4 worldPos = modelMatrix * vec4(targetPos, 1.0);
-      float dCursor = distance(worldPos.xyz, uPointerWorld);
-
-      // Repulsion bubble radius = 2.4 units
-      float influence = smoothstep(2.4, 0.0, dCursor) * uPointerActive;
 
       // Displace particle away from cursor with a buoyant organic ripple
-      vec3 pushDir = worldPos.xyz - uPointerWorld;
-      float len = length(pushDir);
-      if (len > 0.001) {
-        pushDir = pushDir / len;
-      } else {
-        pushDir = vec3(0.0, 1.0, 0.0);
-      }
-
-      // Harmonic wave ripple that excites particles near the cursor
+      vec3 pushDir = normalize(worldPos.xyz - uPointerWorld + vec3(0.0, 0.001, 0.0));
+      float dCursor = length(worldPos.xyz - uPointerWorld);
+      float influence = smoothstep(2.4, 0.2, dCursor) * uPointerActive;
       float wave = sin(dCursor * 4.5 - uTime * 6.0 + aSeed * 6.28) * 0.12 * influence;
       vec3 displacement = (pushDir * influence * 0.55) + vec3(0.0, wave + influence * 0.28, 0.0);
 
@@ -311,16 +305,17 @@ export default function setupBridge({ scene, camera, material }) {
 
   return {
     update({ time, delta, pointer, input, aspect, reduced }) {
-      const fit = { ...DEFAULT_FIT, ...input.fit, ...(aspect < 0.9 ? input.fit?.portrait : null) };
+      const isPortrait = aspect < 0.9;
+      const fit = { ...DEFAULT_FIT, ...input.fit, ...(isPortrait ? input.fit?.portrait : null) };
       frameCamera(camera, {
         target: [0, 0.4, 0],
-        halfWidth: (ISLAND_OFFSET + ISLAND_RADIUS) * 0.82,
-        halfHeight: 3.2,
+        halfWidth: isPortrait ? 5.2 : (ISLAND_OFFSET + ISLAND_RADIUS) * 0.82,
+        halfHeight: isPortrait ? 2.4 : 3.2,
         fill: fit.fill,
         x: fit.x,
         y: fit.y,
-        pitch: fit.pitch - pointer.y * 0.04,
-        yaw: pointer.x * 0.08,
+        pitch: fit.pitch - (pointer?.y ?? 0) * 0.04,
+        yaw: (pointer?.x ?? 0) * 0.08,
       });
 
       world.rotation.y = -0.16 + Math.sin(time * 0.12) * 0.06;
@@ -331,7 +326,6 @@ export default function setupBridge({ scene, camera, material }) {
       if (!reduced && pointer && (Math.abs(pointer.x) > 0.001 || Math.abs(pointer.y) > 0.001)) {
         raycaster.setFromCamera(new THREE.Vector2(pointer.x, pointer.y), camera);
         if (raycaster.ray.intersectPlane(bridgePlane, hitPoint)) {
-          // Smoothly interpolate cursor target
           currentPointerWorld.lerp(hitPoint, 0.2);
           structureMat.uniforms.uPointerWorld.value.copy(currentPointerWorld);
           structureMat.uniforms.uPointerActive.value = THREE.MathUtils.lerp(
