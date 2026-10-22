@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Check, Compass } from 'lucide-react';
-import { Badge, Button, EmptyState, PageHeader, ScoreRing, Switch, UrgencyBadge } from '../../components/ui';
+import { Badge, Button, EmptyState, ScoreRing, Switch, UrgencyBadge } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Panel, PanelLink } from '../../components/dashboard/Panel';
 import { StatCard, StatGrid } from '../../components/dashboard/StatCard';
 import { DashboardSkeleton, todayLabel } from '../../components/dashboard/DashboardSkeleton';

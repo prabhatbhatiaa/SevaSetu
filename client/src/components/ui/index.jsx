@@ -7,7 +7,6 @@ export { EmptyState } from './EmptyState';
 export { Field, Input, Select, Textarea } from './Field';
 export { Logo, LogoMark } from './Logo';
 export { Modal } from './Modal';
-export { PageHeader } from './PageHeader';
 export { Pagination } from './Pagination';
 export { ScoreRing } from './ScoreRing';
 export { Skeleton, SkeletonList } from './Skeleton';

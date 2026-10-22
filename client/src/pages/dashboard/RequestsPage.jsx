@@ -5,13 +5,13 @@ import {
   Button,
   EmptyState,
   Input,
-  PageHeader,
   Pagination,
   ScoreRing,
   Select,
   Skeleton,
   Tabs,
 } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { RequestCard } from '../../components/requests/RequestCard';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';

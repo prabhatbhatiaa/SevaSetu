@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { ArrowUpRight, ClipboardList, Plus, Star } from 'lucide-react';
-import { Avatar, Button, EmptyState, PageHeader, StatusBadge, UrgencyBadge } from '../../components/ui';
+import { Avatar, Button, EmptyState, StatusBadge, UrgencyBadge } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { DonutChart } from '../../components/charts';
 import { Panel, PanelLink } from '../../components/dashboard/Panel';
 import { StatCard, StatGrid } from '../../components/dashboard/StatCard';

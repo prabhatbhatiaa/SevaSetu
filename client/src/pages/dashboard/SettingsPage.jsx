@@ -5,13 +5,13 @@ import {
   Chip,
   Field,
   Input,
-  PageHeader,
   Skeleton,
   Switch,
   Tabs,
   Tag,
   Textarea,
 } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { Panel } from '../../components/dashboard/Panel';
 import { MapPicker } from '../../components/maps/MapPicker';
 import { AvailabilityGrid } from '../../components/volunteers/AvailabilityGrid';

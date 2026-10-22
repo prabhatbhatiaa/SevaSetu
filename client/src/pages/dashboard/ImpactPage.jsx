@@ -1,5 +1,5 @@
 import { ImpactOverview } from '../../components/impact/ImpactOverview';
-import { PageHeader } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import api from '../../lib/api';
 import { useDocumentTitle, useFetch } from '../../lib/hooks';
 

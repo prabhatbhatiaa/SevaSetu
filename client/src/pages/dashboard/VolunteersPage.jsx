@@ -6,12 +6,12 @@ import {
   EmptyState,
   Input,
   Modal,
-  PageHeader,
   Pagination,
   Select,
   Skeleton,
   Stars,
 } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { AvailabilityGrid } from '../../components/volunteers/AvailabilityGrid';
 import api from '../../lib/api';
 import { CATEGORY_NAMES } from '../../lib/constants';

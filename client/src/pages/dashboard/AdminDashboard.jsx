@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
-import { Avatar, PageHeader, StatusBadge } from '../../components/ui';
+import { Avatar, StatusBadge } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { BarList, DonutChart, StackedBar } from '../../components/charts';
 import { Panel, PanelLink } from '../../components/dashboard/Panel';
 import { StatCard, StatGrid } from '../../components/dashboard/StatCard';

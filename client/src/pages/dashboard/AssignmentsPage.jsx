@@ -5,7 +5,6 @@ import {
   Avatar,
   Button,
   EmptyState,
-  PageHeader,
   Pagination,
   ScoreRing,
   SkeletonList,
@@ -13,6 +12,7 @@ import {
   Tabs,
   cn,
 } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { CategoryLabel } from '../../components/requests/RequestCard';
 import { FactorBreakdown } from '../../components/matching/FactorBreakdown';
 import { useAuth } from '../../context/AuthContext';

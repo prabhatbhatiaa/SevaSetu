@@ -5,12 +5,12 @@ import {
   Button,
   EmptyState,
   Input,
-  PageHeader,
   Pagination,
   SegmentedControl,
   Select,
   Skeleton,
 } from '../../components/ui';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { RequestCard } from '../../components/requests/RequestCard';
 import { RequestsMap } from '../../components/maps/RequestsMap';
 import api from '../../lib/api';
