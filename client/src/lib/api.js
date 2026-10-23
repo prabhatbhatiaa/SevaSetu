@@ -3,8 +3,12 @@ import axios from 'axios';
 export const TOKEN_KEY = 'sevasetu_token';
 export const UNAUTHORIZED_EVENT = 'sevasetu:unauthorized';
 
+// Ensure baseURL has no trailing slash to avoid double slashes when joining endpoints
+const rawBaseURL = import.meta.env.VITE_API_URL || '/api';
+const baseURL = rawBaseURL.replace(/\/+$/, '');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
