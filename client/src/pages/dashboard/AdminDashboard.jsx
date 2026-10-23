@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
-import { Avatar, StatusBadge } from '../../components/ui';
+import { AlertCircle, Star } from 'lucide-react';
+import { Avatar, Button, EmptyState, StatusBadge } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { BarList, DonutChart, StackedBar } from '../../components/charts';
 import { Panel, PanelLink } from '../../components/dashboard/Panel';
@@ -16,9 +16,26 @@ async function loadAdminDashboard() {
 }
 
 export default function AdminDashboard({ user }) {
-  const { data, loading } = useFetch(loadAdminDashboard, []);
+  const { data, loading, error, reload } = useFetch(loadAdminDashboard, []);
 
   if (loading && !data) return <DashboardSkeleton />;
+
+  if (error || !data || !data.admin) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load platform analytics"
+          description={error?.message || "We couldn't connect to the server to fetch administrator analytics. Please try again."}
+          action={
+            <Button variant="primary" onClick={reload}>
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   const { overview, requestsByStatus, usersByRole, topVolunteers, recentAssignments } = data.admin;
   const { summary, categories } = data.publicStats;

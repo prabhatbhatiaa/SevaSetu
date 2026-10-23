@@ -17,6 +17,21 @@ const createReview = async (req, res, next) => {
   try {
     const { requestId, rating, feedback } = req.body;
 
+    if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid service request ID is required.',
+      });
+    }
+
+    const numericRating = Number(rating);
+    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be a number between 1 and 5.',
+      });
+    }
+
     const request = await ServiceRequest.findById(requestId);
     if (!request) {
       return res.status(404).json({
@@ -55,19 +70,30 @@ const createReview = async (req, res, next) => {
     // Check if review already exists for this request
     const existingReview = await Review.findOne({ request: requestId });
     if (existingReview) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: 'A review has already been submitted for this service request.',
       });
     }
 
-    const review = await Review.create({
-      request: requestId,
-      volunteer: request.assignedVolunteer,
-      requester: req.user._id,
-      rating: Number(rating),
-      feedback: feedback || '',
-    });
+    let review;
+    try {
+      review = await Review.create({
+        request: requestId,
+        volunteer: request.assignedVolunteer,
+        requester: req.user._id,
+        rating: numericRating,
+        feedback: feedback || '',
+      });
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'A review has already been submitted for this service request.',
+        });
+      }
+      throw createErr;
+    }
 
     // Fetch updated volunteer stats after the review's post-save aggregation hook
     const updatedProfile = await VolunteerProfile.findOne({
@@ -83,7 +109,7 @@ const createReview = async (req, res, next) => {
       message: 'Thank you! Your feedback has been recorded and volunteer rating updated.',
       data: populatedReview,
       volunteerStats: {
-        newRating: updatedProfile ? updatedProfile.rating : Number(rating),
+        newRating: updatedProfile ? updatedProfile.rating : numericRating,
         totalReviews: updatedProfile ? updatedProfile.ratingCount : 1,
       },
     });
@@ -102,14 +128,19 @@ const getVolunteerReviews = async (req, res, next) => {
     const { volunteerId } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
+    if (!volunteerId || !mongoose.Types.ObjectId.isValid(volunteerId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid volunteer ID is required.',
+      });
+    }
+
     let targetUserId = volunteerId;
 
     // Check if provided ID is a VolunteerProfile ID instead of User ID
-    if (mongoose.Types.ObjectId.isValid(volunteerId)) {
-      const profile = await VolunteerProfile.findById(volunteerId);
-      if (profile) {
-        targetUserId = profile.user.toString();
-      }
+    const profile = await VolunteerProfile.findById(volunteerId);
+    if (profile) {
+      targetUserId = profile.user.toString();
     }
 
     const query = { volunteer: targetUserId };
@@ -148,10 +179,11 @@ const getVolunteerReviews = async (req, res, next) => {
       ]),
     ]);
 
+    // Return null when total reviews is 0 instead of misleading 5.0
     const averageRating =
-      aggregateStats.length > 0
+      aggregateStats.length > 0 && aggregateStats[0].count > 0
         ? Math.round(aggregateStats[0].averageRating * 10) / 10
-        : 5.0;
+        : null;
 
     const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     distributionStats.forEach((item) => {
@@ -185,6 +217,13 @@ const getRequestReview = async (req, res, next) => {
   try {
     const { requestId } = req.params;
 
+    if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid service request ID is required.',
+      });
+    }
+
     const review = await Review.findOne({ request: requestId })
       .populate('requester', 'name avatar city')
       .populate('volunteer', 'name avatar');
@@ -216,9 +255,32 @@ const getReviews = async (req, res, next) => {
 
     const query = {};
 
-    if (volunteerId) query.volunteer = volunteerId;
-    if (requesterId) query.requester = requesterId;
-    if (minRating) query.rating = { $gte: Number(minRating) };
+    if (volunteerId) {
+      if (!mongoose.Types.ObjectId.isValid(volunteerId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid volunteer ID parameter.',
+        });
+      }
+      query.volunteer = volunteerId;
+    }
+
+    if (requesterId) {
+      if (!mongoose.Types.ObjectId.isValid(requesterId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid requester ID parameter.',
+        });
+      }
+      query.requester = requesterId;
+    }
+
+    if (minRating) {
+      const numRating = Number(minRating);
+      if (!isNaN(numRating) && numRating >= 1 && numRating <= 5) {
+        query.rating = { $gte: numRating };
+      }
+    }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(50, parseInt(limit, 10) || 10));

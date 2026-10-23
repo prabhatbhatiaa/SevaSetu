@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Check, Compass } from 'lucide-react';
+import { AlertCircle, Check, Compass } from 'lucide-react';
 import { Badge, Button, EmptyState, ScoreRing, Switch, UrgencyBadge } from '../../components/ui';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Panel, PanelLink } from '../../components/dashboard/Panel';
@@ -87,9 +87,26 @@ function MatchRow({ match, onAccept, accepting }) {
 export default function VolunteerDashboard({ user }) {
   const toast = useToast();
   const { pendingKey, run } = useAction();
-  const { data, loading, reload, setData } = useFetch(loadVolunteerDashboard, [user._id]);
+  const { data, loading, error, reload, setData } = useFetch(loadVolunteerDashboard, [user._id]);
 
   if (loading && !data) return <DashboardSkeleton />;
+
+  if (error || !data) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load your dashboard"
+          description={error?.message || "We couldn't reach the server. Please check your connection and try again."}
+          action={
+            <Button variant="primary" onClick={reload}>
+              Try again
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   const { profile, matches, assignments } = data;
   const offers = assignments.filter((assignment) => assignment.status === 'OFFERED');

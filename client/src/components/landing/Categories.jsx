@@ -9,24 +9,24 @@ export function Categories({ impact }) {
   const totals = Object.fromEntries((impact?.categories ?? []).map((item) => [item.category, item.total]));
 
   return (
-    <section id="categories" data-act="categories" className="scroll-mt-16 py-16 sm:py-20">
+    <section id="categories" data-act="categories" className="scroll-mt-16 py-10 sm:py-16 lg:py-20">
       <div className="container-page">
-        <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-6">
           <div>
             <p className="eyebrow reveal">What people ask for</p>
-            <h2 className="display reveal mt-4 text-[44px] sm:text-6xl">
+            <h2 className="display reveal mt-3 sm:mt-4 text-[30px] sm:text-5xl lg:text-6xl leading-[1.12]">
               Ten kinds of help. <em>One</em> place to ask.
             </h2>
           </div>
           <Link
             to="/requests/explore"
-            className="reveal inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity hover:opacity-70"
+            className="reveal inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold transition-opacity hover:opacity-70"
           >
-            Browse open requests <ArrowUpRight className="h-4 w-4" />
+            Browse open requests <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Link>
         </div>
 
-        <ul className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <ul className="mt-6 sm:mt-8 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
           {CATEGORIES.map((category, index) => {
             const featured = index < 2;
             const count = totals[category.name] ?? 0;
@@ -39,24 +39,24 @@ export function Categories({ impact }) {
                 <TiltCard
                   as={Link}
                   to={`/requests/explore?category=${encodeURIComponent(category.name)}`}
-                  className="group flex h-full min-h-[150px] flex-col rounded-2xl border bg-surface p-5 hover:border-strong"
+                  className="group flex h-full min-h-[120px] sm:min-h-[150px] flex-col rounded-xl sm:rounded-2xl border bg-surface p-3.5 sm:p-5 hover:border-strong transition-all"
                 >
                   <div className="flex items-start justify-between">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full border">
-                      <category.icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                    <span className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border bg-canvas/60">
+                      <category.icon className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={1.75} />
                     </span>
-                    <ArrowUpRight className="h-4 w-4 text-subtle transition-colors group-hover:text-ink" />
+                    <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-subtle transition-colors group-hover:text-ink" />
                   </div>
                   <h3
                     className={cn(
-                      'mt-auto pt-6 font-medium leading-tight tracking-tight',
-                      featured ? 'text-3xl sm:text-4xl' : 'text-lg',
+                      'mt-auto pt-4 sm:pt-6 font-medium leading-tight tracking-tight',
+                      featured ? 'text-lg sm:text-3xl' : 'text-sm sm:text-lg',
                     )}
                   >
                     {category.name}
                   </h3>
-                  {featured && <p className="mt-3 max-w-xs text-[15px] leading-relaxed text-muted">{category.blurb}</p>}
-                  <p className="mt-3 text-xs text-subtle">
+                  {featured && <p className="mt-2 sm:mt-3 max-w-xs text-xs sm:text-[15px] leading-relaxed text-muted">{category.blurb}</p>}
+                  <p className="mt-2 sm:mt-3 text-[11px] sm:text-xs text-subtle">
                     {count ? `${pluralize(count, 'request')} so far` : 'Be the first to ask'}
                   </p>
                 </TiltCard>

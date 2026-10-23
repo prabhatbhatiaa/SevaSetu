@@ -130,6 +130,21 @@ export default function AppShell() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  // Drawer accessibility: handle Escape key and body scroll lock
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [drawerOpen]);
+
   // `/dashboard/requests?new=1` opens the request form directly.
   useEffect(() => {
     if (searchParams.get('new') === '1' && canCreateRequests) setCreating(true);
@@ -149,15 +164,15 @@ export default function AppShell() {
       </aside>
 
       {drawerOpen && (
-        <div className="fixed inset-0 z-[60] lg:hidden">
-          <div className="absolute inset-0 animate-fade-in bg-black/70" onClick={() => setDrawerOpen(false)} />
+        <div className="fixed inset-0 z-[60] lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation drawer">
+          <div className="absolute inset-0 animate-fade-in bg-black/70" onClick={() => setDrawerOpen(false)} aria-hidden="true" />
           <div className="absolute inset-y-0 left-0 w-72 animate-scale-in border-r bg-canvas">
             <div className="flex h-16 items-center justify-between border-b px-5">
               <Logo />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="-mr-1.5 rounded-full p-1.5 text-muted"
+                className="-mr-1.5 rounded-full p-1.5 text-muted hover:text-ink"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />

@@ -18,7 +18,15 @@ const register = async (req, res, next) => {
       });
     }
 
-    const assignedRole = role || USER_ROLES.COMMUNITY_MEMBER;
+    // Reject admin role registration from public endpoint
+    if (role === USER_ROLES.ADMIN || role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Administrator accounts cannot be created through public registration.',
+      });
+    }
+
+    const assignedRole = role === USER_ROLES.VOLUNTEER ? USER_ROLES.VOLUNTEER : USER_ROLES.COMMUNITY_MEMBER;
 
     // Create user document
     const user = await User.create({
@@ -27,10 +35,7 @@ const register = async (req, res, next) => {
       password,
       role: assignedRole,
       phone,
-      location: location || {
-        type: 'Point',
-        coordinates: [77.0266, 28.4595], // Default Gurugram
-      },
+      location: location || undefined,
     });
 
     let volunteerProfile = null;
@@ -42,7 +47,7 @@ const register = async (req, res, next) => {
         skills: Array.isArray(skills) ? skills : [],
         categories: Array.isArray(categories) ? categories : ['Basic Community Assistance'],
         serviceRadius: 10,
-        location: user.location,
+        location: user.location?.coordinates ? user.location : undefined,
       });
     }
 

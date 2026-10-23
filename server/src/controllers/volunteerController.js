@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { VolunteerProfile, ServiceRequest, User, USER_ROLES, REQUEST_STATUS } = require('../models');
 const { calculateMatchScore } = require('../algorithms/volunteerMatcher');
 
@@ -111,11 +112,13 @@ const getVolunteers = async (req, res, next) => {
     }
 
     if (skill) {
-      query.skills = { $regex: skill, $options: 'i' };
+      const escapedSkill = skill.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.skills = { $regex: escapedSkill, $options: 'i' };
     }
 
     if (city) {
-      query['location.city'] = { $regex: city, $options: 'i' };
+      const escapedCity = city.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query['location.city'] = { $regex: escapedCity, $options: 'i' };
     }
 
     if (minRating) {
@@ -126,13 +129,14 @@ const getVolunteers = async (req, res, next) => {
     if (near) {
       const parts = near.split(',').map(Number);
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        const safeDistance = Math.max(0.1, Math.min(100, Number(maxDistance) || 10));
         query.location = {
           $nearSphere: {
             $geometry: {
               type: 'Point',
               coordinates: parts,
             },
-            $maxDistance: Number(maxDistance) * 1000, // convert km to meters
+            $maxDistance: safeDistance * 1000, // convert km to meters
           },
         };
       }
@@ -151,13 +155,30 @@ const getVolunteers = async (req, res, next) => {
       VolunteerProfile.countDocuments(query),
     ]);
 
+    // Redact exact private coordinates and address from public listings
+    const sanitizedVolunteers = volunteers.map((v) => {
+      const isSelf = req.user && v.user && req.user._id.toString() === (v.user._id || v.user).toString();
+      const isAdmin = req.user && req.user.role === USER_ROLES.ADMIN;
+      if (!isSelf && !isAdmin && v.location) {
+        return {
+          ...v,
+          location: {
+            type: v.location.type,
+            city: v.location.city,
+            state: v.location.state,
+          },
+        };
+      }
+      return v;
+    });
+
     res.status(200).json({
       success: true,
-      count: volunteers.length,
+      count: sanitizedVolunteers.length,
       total,
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
-      data: volunteers,
+      data: sanitizedVolunteers,
     });
   } catch (error) {
     next(error);
@@ -173,24 +194,44 @@ const getVolunteerById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    let profile = await VolunteerProfile.findById(id).populate(
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid volunteer profile ID format.',
+      });
+    }
+
+    let profileDoc = await VolunteerProfile.findById(id).populate(
       'user',
       'name avatar city state role createdAt'
     );
 
     // Fallback: search by user ID
-    if (!profile) {
-      profile = await VolunteerProfile.findOne({ user: id }).populate(
+    if (!profileDoc) {
+      profileDoc = await VolunteerProfile.findOne({ user: id }).populate(
         'user',
         'name avatar city state role createdAt'
       );
     }
 
-    if (!profile) {
+    if (!profileDoc) {
       return res.status(404).json({
         success: false,
         message: 'Volunteer profile not found.',
       });
+    }
+
+    const profile = profileDoc.toObject();
+
+    // Redact exact private address/coordinates from public profile view
+    const isSelf = req.user && profile.user && req.user._id.toString() === (profile.user._id || profile.user).toString();
+    const isAdmin = req.user && req.user.role === USER_ROLES.ADMIN;
+    if (!isSelf && !isAdmin && profile.location) {
+      profile.location = {
+        type: profile.location.type,
+        city: profile.location.city,
+        state: profile.location.state,
+      };
     }
 
     res.status(200).json({

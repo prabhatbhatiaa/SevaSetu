@@ -48,13 +48,11 @@ const assignmentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ServiceRequest',
       required: [true, 'Service Request reference is required for Assignment'],
-      index: true,
     },
     volunteer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'Volunteer reference is required for Assignment'],
-      index: true,
     },
     matchScore: {
       type: Number,
@@ -96,7 +94,26 @@ const assignmentSchema = new mongoose.Schema(
 );
 
 // Compound indexes for uniqueness and high-volume matching lookup
-assignmentSchema.index({ request: 1, volunteer: 1 });
+// Partial unique index: only ONE accepted assignment per request
+assignmentSchema.index(
+  { request: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: ASSIGNMENT_STATUS.ACCEPTED },
+  }
+);
+
+// Partial unique index: prevent duplicate active offers or acceptances for the same volunteer on a request
+assignmentSchema.index(
+  { request: 1, volunteer: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: [ASSIGNMENT_STATUS.OFFERED, ASSIGNMENT_STATUS.ACCEPTED] },
+    },
+  }
+);
+
 assignmentSchema.index({ volunteer: 1, status: 1 });
 assignmentSchema.index({ request: 1, status: 1 });
 

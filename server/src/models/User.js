@@ -49,12 +49,10 @@ const userSchema = new mongoose.Schema(
       type: {
         type: String,
         enum: ['Point'],
-        default: 'Point',
       },
       // Note: GeoJSON coordinates are in [longitude, latitude] format
       coordinates: {
         type: [Number],
-        default: [77.0266, 28.4595], // Default sample coordinates (Gurugram)
       },
       address: {
         type: String,
@@ -77,6 +75,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -90,13 +92,33 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// 2dsphere index for user location queries
-userSchema.index({ location: '2dsphere' });
+// 2dsphere index for user location queries (sparse for users without coordinates)
+userSchema.index({ location: '2dsphere' }, { sparse: true });
+
+// Ensure location is valid GeoJSON Point or omitted
+userSchema.pre('validate', function (next) {
+  if (this.location) {
+    if (
+      !this.location.coordinates ||
+      !Array.isArray(this.location.coordinates) ||
+      this.location.coordinates.length < 2
+    ) {
+      this.location = undefined;
+    } else {
+      this.location.type = 'Point';
+    }
+  }
+  next();
+});
 
 // Pre-save hook to hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     return next();
+  }
+  // Automatically bump tokenVersion when password changes to revoke all existing sessions
+  if (!this.isNew) {
+    this.tokenVersion = (this.tokenVersion || 0) + 1;
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -110,14 +132,20 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Instance method to generate signed JWT token
 userSchema.methods.generateAuthToken = function () {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured on this server.');
+  }
+
   return jwt.sign(
     {
       id: this._id,
       role: this.role,
       email: this.email,
       name: this.name,
+      tokenVersion: this.tokenVersion || 0,
     },
-    process.env.JWT_SECRET || 'sevasetu_fallback_secret_for_development_key',
+    secret,
     {
       algorithm: 'HS256',
       issuer: 'sevasetu-platform',

@@ -31,10 +31,10 @@ const COLUMNS = [
 export function SiteFooter() {
   return (
     <footer className="border-t">
-      <div className="container-page grid gap-12 py-16 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+      <div className="container-page grid gap-8 sm:gap-12 py-10 sm:py-16 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div>
           <Logo />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted">
+          <p className="mt-3 sm:mt-5 max-w-xs text-xs sm:text-sm leading-relaxed text-muted">
             A digital bridge connecting community needs with people willing to help — matched by skill, distance and
             time.
           </p>
@@ -42,8 +42,8 @@ export function SiteFooter() {
 
         {COLUMNS.map((column) => (
           <div key={column.title}>
-            <h2 className="eyebrow mb-5">{column.title}</h2>
-            <ul className="space-y-3 text-sm">
+            <h2 className="eyebrow mb-3 sm:mb-5 text-[10px] sm:text-xs">{column.title}</h2>
+            <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
               {column.links.map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="text-muted transition-colors hover:text-ink">
@@ -57,7 +57,7 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t">
-        <div className="container-page flex flex-wrap items-center justify-between gap-3 py-6 text-xs text-subtle">
+        <div className="container-page flex flex-wrap items-center justify-between gap-2.5 py-4 sm:py-6 text-[11px] sm:text-xs text-subtle">
           <span>© {new Date().getFullYear()} SevaSetu. Built for communities.</span>
           <span>सेवा सेतु · Supporting SDG 11 and SDG 17</span>
         </div>

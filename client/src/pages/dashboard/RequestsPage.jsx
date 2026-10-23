@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { ClipboardList, Compass, Plus, Search } from 'lucide-react';
+import { AlertCircle, ClipboardList, Compass, Plus, Search } from 'lucide-react';
 import {
   Button,
   EmptyState,
@@ -63,7 +63,7 @@ function ManageRequests({ isAdmin }) {
 
   useEffect(() => setPage(1), [status, category, search]);
 
-  const { data, loading, reload } = useFetch(async () => {
+  const { data, loading, error, reload } = useFetch(async () => {
     const params = { page, limit: 9 };
     if (!isAdmin) params.mine = true;
     if (status) params.status = status;
@@ -119,6 +119,17 @@ function ManageRequests({ isAdmin }) {
 
       {loading && !data ? (
         <CardGridSkeleton />
+      ) : error ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load requests"
+          description={error?.message || "We couldn't connect to the server to fetch your requests."}
+          action={
+            <Button variant="primary" onClick={reload}>
+              Try again
+            </Button>
+          }
+        />
       ) : requests.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
@@ -156,7 +167,7 @@ function Opportunities() {
 
   useEffect(() => setPage(1), [tab, category]);
 
-  const { data, loading, reload } = useFetch(async () => {
+  const { data, loading, error, reload } = useFetch(async () => {
     if (tab === 'matched') {
       const response = await api.get('/volunteers/matched-requests', { params: { limit: 30, minScore: 0 } });
       return { matched: response.data.data };
@@ -183,6 +194,19 @@ function Opportunities() {
   let content;
   if (loading && !data) {
     content = <CardGridSkeleton />;
+  } else if (error) {
+    content = (
+      <EmptyState
+        icon={AlertCircle}
+        title="Could not load opportunities"
+        description={error?.message || "We couldn't connect to the server to fetch volunteer requests."}
+        action={
+          <Button variant="primary" onClick={reload}>
+            Try again
+          </Button>
+        }
+      />
+    );
   } else if (tab === 'matched') {
     content = matched.length ? (
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

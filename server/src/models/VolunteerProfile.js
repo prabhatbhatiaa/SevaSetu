@@ -54,14 +54,13 @@ const volunteerProfileSchema = new mongoose.Schema(
       type: {
         type: String,
         enum: ['Point'],
-        default: 'Point',
       },
       // GeoJSON: [longitude, latitude]
       coordinates: {
         type: [Number],
-        required: [true, 'Volunteer location coordinates are required'],
         validate: {
           validator: function (v) {
+            if (!v || v.length === 0) return true;
             return (
               Array.isArray(v) &&
               v.length === 2 &&
@@ -93,7 +92,7 @@ const volunteerProfileSchema = new mongoose.Schema(
     },
     rating: {
       type: Number,
-      default: 5.0,
+      default: 0,
       min: 0,
       max: 5,
     },
@@ -123,8 +122,24 @@ const volunteerProfileSchema = new mongoose.Schema(
   }
 );
 
-// Geospatial 2dsphere index on location for distance queries ($nearSphere / $geoWithin)
-volunteerProfileSchema.index({ location: '2dsphere' });
+// Geospatial 2dsphere index on location for distance queries ($nearSphere / $geoWithin) (sparse for volunteers without coordinates)
+volunteerProfileSchema.index({ location: '2dsphere' }, { sparse: true });
+
+// Ensure location is valid GeoJSON Point or omitted
+volunteerProfileSchema.pre('validate', function (next) {
+  if (this.location) {
+    if (
+      !this.location.coordinates ||
+      !Array.isArray(this.location.coordinates) ||
+      this.location.coordinates.length < 2
+    ) {
+      this.location = undefined;
+    } else {
+      this.location.type = 'Point';
+    }
+  }
+  next();
+});
 
 // Compound indexes for high-speed multi-criteria matching
 volunteerProfileSchema.index({ isActive: 1, categories: 1 });

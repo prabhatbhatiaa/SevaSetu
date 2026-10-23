@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import {
   Badge,
   Button,
   Chip,
+  EmptyState,
   Field,
   Input,
   Skeleton,
@@ -118,7 +120,12 @@ function AccountSettings() {
 
 function VolunteerSettings() {
   const toast = useToast();
-  const { data: profile, loading } = useFetch(async () => (await api.get('/volunteers/me')).data.data, []);
+  const {
+    data: profile,
+    loading,
+    error,
+    reload,
+  } = useFetch(async () => (await api.get('/volunteers/me')).data.data, []);
   const [form, setForm] = useState(null);
   const [skillDraft, setSkillDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -135,7 +142,24 @@ function VolunteerSettings() {
     });
   }, [profile]);
 
-  if (loading || !form) return <Skeleton className="h-96" />;
+  if (loading && !form) return <Skeleton className="h-96" />;
+
+  if (error && !form) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Could not load volunteer settings"
+        description={error?.message || "We couldn't connect to the server to fetch your volunteer profile."}
+        action={
+          <Button variant="primary" onClick={reload}>
+            Retry
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (!form) return <Skeleton className="h-96" />;
 
   const update = (changes) => setForm((current) => ({ ...current, ...changes }));
 

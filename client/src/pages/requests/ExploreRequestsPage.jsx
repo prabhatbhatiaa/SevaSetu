@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LayoutGrid, LocateFixed, Map as MapIcon, Search, SearchX } from 'lucide-react';
+import { AlertCircle, LayoutGrid, LocateFixed, Map as MapIcon, Search, SearchX } from 'lucide-react';
 import {
   Button,
   EmptyState,
@@ -42,7 +42,7 @@ export default function ExploreRequestsPage() {
 
   useEffect(() => setPage(1), [search, category, urgency, status, view, nearMe]);
 
-  const { data, loading } = useFetch(async () => {
+  const { data, loading, error, reload } = useFetch(async () => {
     // The map shows everything at once; the grid pages through results.
     const params = { page, limit: view === 'map' ? 50 : 12 };
     if (status) params.status = status;
@@ -98,6 +98,15 @@ export default function ExploreRequestsPage() {
           <Skeleton key={index} className="h-60" />
         ))}
       </div>
+    );
+  } else if (error) {
+    results = (
+      <EmptyState
+        icon={AlertCircle}
+        title="Could not load requests"
+        description={error?.message || "We couldn't connect to the server to fetch community requests."}
+        action={<Button variant="primary" onClick={reload}>Try again</Button>}
+      />
     );
   } else if (requests.length === 0) {
     results = (
