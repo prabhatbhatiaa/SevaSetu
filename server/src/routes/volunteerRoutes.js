@@ -8,7 +8,7 @@ const {
   getMatchedRequestsForVolunteer,
 } = require('../controllers/volunteerController');
 
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorize, optionalAuth } = require('../middleware/auth');
 const { validateVolunteerProfile } = require('../middleware/validate');
 const { USER_ROLES } = require('../models/constants');
 
@@ -35,8 +35,8 @@ router.put(
   updateVolunteerProfile
 );
 
-// Public browse routes
-router.get('/', getVolunteers);
-router.get('/:id', getVolunteerById);
+// Public browse routes (with optional authentication for role-based view)
+router.get('/', optionalAuth, getVolunteers);
+router.get('/:id', optionalAuth, getVolunteerById);
 
 module.exports = router;

@@ -83,14 +83,14 @@ const getPublicImpactStatistics = async (req, res, next) => {
     ]);
 
     const averageRating =
-      ratingAggregate.length > 0
+      ratingAggregate.length > 0 && ratingAggregate[0].avgRating !== null
         ? Math.round(ratingAggregate[0].avgRating * 10) / 10
-        : 4.8;
+        : null;
 
     const completionRate =
       totalRequests > 0
         ? Math.round((completedServices / totalRequests) * 100)
-        : 100;
+        : 0;
 
     const formattedCategories = categoryStats.map((cat) => ({
       category: cat._id,

@@ -296,19 +296,36 @@ function calculateCategoryScore(requestCategory, volunteerCategories = []) {
 
 /**
  * Normalizes volunteer rating (0 - 5.0 scale) and historical completed tasks into 0 - 100 score.
+ * Uses Bayesian weighted rating to avoid giving 100 to new volunteers with 0 reviews.
  *
- * @param {number} rating - Average star rating (0 - 5)
+ * @param {number|null} rating - Average star rating (0 - 5)
  * @param {number} completedTasks - Total tasks completed
+ * @param {number} ratingCount - Total reviews count
  * @returns {number} Score from 0 to 100
  */
-function calculateRatingScore(rating = 5.0, completedTasks = 0) {
-  const safeRating = Math.max(0, Math.min(5, Number(rating) || 5.0));
+function calculateRatingScore(rating = null, completedTasks = 0, ratingCount = 0) {
+  const count = Math.max(0, Number(ratingCount) || 0);
+  let effectiveRating;
 
-  // Normalized base rating: 4.8 / 5.0 * 100 = 96
-  const baseRatingScore = (safeRating / 5) * 100;
+  // If volunteer has no reviews yet (rating is 0, null, or undefined), establish a neutral baseline (3.8 out of 5)
+  // rather than a false 5.0 (100 score).
+  if (rating === null || rating === undefined || rating === 0) {
+    effectiveRating = 3.8;
+  } else if (count > 0) {
+    // Bayesian dampening when rating count is known: prior mean = 4.0, prior weight = 2
+    const priorMean = 4.0;
+    const priorWeight = 2;
+    const rawRating = Math.max(1, Math.min(5, Number(rating)));
+    effectiveRating = (priorWeight * priorMean + count * rawRating) / (priorWeight + count);
+  } else {
+    // Explicit rating provided without count
+    effectiveRating = Math.max(1, Math.min(5, Number(rating)));
+  }
 
-  // Completed tasks small reliability stabilizer (up to +5% capped at 100)
-  const experienceBonus = Math.min(5, Math.floor(completedTasks / 5));
+  const baseRatingScore = (effectiveRating / 5) * 100;
+
+  // Completed tasks reliability stabilizer (up to +5% capped at 100)
+  const experienceBonus = Math.min(5, Math.floor((Number(completedTasks) || 0) / 5));
   const finalScore = Math.min(100, baseRatingScore + (completedTasks > 0 ? experienceBonus : 0));
 
   return Math.round(finalScore * 10) / 10;
@@ -319,7 +336,7 @@ function calculateRatingScore(rating = 5.0, completedTasks = 0) {
  *
  * @param {object} breakdown - Calculated score breakdown
  * @param {object} skillResult - Skill match details
- * @param {number} distanceKm - Distance in km
+ * @param {number|null} distanceKm - Distance in km
  * @param {number} serviceRadius - Volunteer's radius
  * @returns {Array<string>} List of concise explanation bullets
  */
@@ -327,7 +344,9 @@ function generateMatchExplanation(breakdown, skillResult, distanceKm, serviceRad
   const reasons = [];
 
   // Distance reason
-  if (distanceKm <= 1) {
+  if (distanceKm === null || distanceKm === undefined) {
+    reasons.push('Location not fully specified; regional availability');
+  } else if (distanceKm <= 1) {
     reasons.push(`In your immediate neighborhood (${distanceKm} km away)`);
   } else if (distanceKm <= serviceRadius) {
     reasons.push(`Located ${distanceKm} km away (within ${serviceRadius} km service radius)`);
@@ -359,6 +378,8 @@ function generateMatchExplanation(breakdown, skillResult, distanceKm, serviceRad
   // Rating reason
   if (breakdown.ratingScore >= 90) {
     reasons.push('High community trust rating');
+  } else if (!breakdown.ratingCount || breakdown.ratingCount === 0) {
+    reasons.push('New volunteer welcoming first assignments');
   }
 
   return reasons;
@@ -375,12 +396,30 @@ function generateMatchExplanation(breakdown, skillResult, distanceKm, serviceRad
 function calculateMatchScore(request, volunteerProfile, options = {}) {
   const weights = { ...DEFAULT_WEIGHTS, ...(options.weights || {}) };
 
-  // 1. Distance Calculation
-  const reqCoords = request.location?.coordinates || [77.0266, 28.4595];
-  const volCoords = volunteerProfile.location?.coordinates || [77.0266, 28.4595];
-  const distanceKm = haversineDistance(reqCoords, volCoords);
+  // 1. Distance Calculation (No hardcoded Gurugram fallback!)
+  const hasReqCoords =
+    Array.isArray(request.location?.coordinates) &&
+    request.location.coordinates.length === 2 &&
+    typeof request.location.coordinates[0] === 'number' &&
+    !isNaN(request.location.coordinates[0]);
+
+  const hasVolCoords =
+    Array.isArray(volunteerProfile.location?.coordinates) &&
+    volunteerProfile.location.coordinates.length === 2 &&
+    typeof volunteerProfile.location.coordinates[0] === 'number' &&
+    !isNaN(volunteerProfile.location.coordinates[0]);
+
+  let distanceKm = null;
+  let distanceScore = 50; // Neutral score when exact coordinates are absent
   const serviceRadius = volunteerProfile.serviceRadius || 10;
-  const distanceScore = calculateDistanceScore(distanceKm, serviceRadius, options);
+
+  if (hasReqCoords && hasVolCoords) {
+    distanceKm = haversineDistance(
+      request.location.coordinates,
+      volunteerProfile.location.coordinates
+    );
+    distanceScore = calculateDistanceScore(distanceKm, serviceRadius, options);
+  }
 
   // 2. Skill Compatibility
   const skillResult = calculateSkillScore(request.requiredSkills, volunteerProfile.skills);
@@ -398,7 +437,8 @@ function calculateMatchScore(request, volunteerProfile, options = {}) {
   // 5. Rating & Experience
   const ratingScore = calculateRatingScore(
     volunteerProfile.rating,
-    volunteerProfile.completedTasks
+    volunteerProfile.completedTasks,
+    volunteerProfile.ratingCount
   );
 
   // Composite Weighted Sum
@@ -417,7 +457,8 @@ function calculateMatchScore(request, volunteerProfile, options = {}) {
     availabilityScore: availResult.score,
     categoryScore,
     ratingScore,
-    calculatedDistanceKm: distanceKm,
+    ratingCount: volunteerProfile.ratingCount || 0,
+    calculatedDistanceKm: distanceKm !== null ? distanceKm : 0,
     matchedSkills: skillResult.matchedSkills,
     missingSkills: skillResult.missingSkills,
   };

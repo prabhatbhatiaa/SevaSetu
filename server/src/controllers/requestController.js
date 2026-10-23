@@ -1,8 +1,11 @@
+const mongoose = require('mongoose');
 const {
   ServiceRequest,
   VolunteerProfile,
+  Assignment,
   User,
   REQUEST_STATUS,
+  ASSIGNMENT_STATUS,
   USER_ROLES,
 } = require('../models');
 
@@ -115,12 +118,14 @@ const getRequests = async (req, res, next) => {
       query.assignedVolunteer = req.user._id;
     }
 
-    // Text search on title or description
+    // Text search on title or description (escaped to prevent ReDoS)
     if (search) {
+      const sanitized = search.trim();
+      const escaped = sanitized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { requiredSkills: { $regex: search, $options: 'i' } },
+        { title: { $regex: escaped, $options: 'i' } },
+        { description: { $regex: escaped, $options: 'i' } },
+        { requiredSkills: { $regex: escaped, $options: 'i' } },
       ];
     }
 
@@ -128,13 +133,14 @@ const getRequests = async (req, res, next) => {
     if (near) {
       const parts = near.split(',').map(Number);
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+        const safeDistance = Math.max(0.1, Math.min(100, Number(maxDistance) || 10));
         query.location = {
           $nearSphere: {
             $geometry: {
               type: 'Point',
               coordinates: parts,
             },
-            $maxDistance: Number(maxDistance) * 1000, // convert km to meters
+            $maxDistance: safeDistance * 1000, // convert km to meters
           },
         };
       }
@@ -144,14 +150,17 @@ const getRequests = async (req, res, next) => {
     const limitNum = Math.max(1, Math.min(50, parseInt(limit, 10) || 10));
     const skip = (pageNum - 1) * limitNum;
 
-    // Sorting (note: $nearSphere cannot use standard .sort())
+    // Sorting with field whitelist (note: $nearSphere cannot use standard .sort())
+    const allowedSortFields = ['createdAt', 'urgency', 'status', 'title'];
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+
     let queryExec = ServiceRequest.find(query)
       .populate('requester', 'name avatar city')
       .populate('assignedVolunteer', 'name avatar rating');
 
     if (!near) {
       const sort = {};
-      sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+      sort[safeSortBy] = sortOrder === 'asc' ? 1 : -1;
       queryExec = queryExec.sort(sort);
     }
 
@@ -160,13 +169,32 @@ const getRequests = async (req, res, next) => {
       ServiceRequest.countDocuments(query),
     ]);
 
+    // Redact exact street addresses in public request listings
+    const sanitizedRequests = requests.map((item) => {
+      const isOwner = req.user && item.requester && req.user._id.toString() === (item.requester._id || item.requester).toString();
+      const isAdmin = req.user && req.user.role === USER_ROLES.ADMIN;
+      if (!isOwner && !isAdmin && item.location) {
+        return {
+          ...item,
+          location: {
+            type: item.location.type,
+            city: item.location.city,
+            state: item.location.state,
+            // Keep coordinates for map markers
+            coordinates: item.location.coordinates,
+          },
+        };
+      }
+      return item;
+    });
+
     res.status(200).json({
       success: true,
-      count: requests.length,
+      count: sanitizedRequests.length,
       total,
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
-      data: requests,
+      data: sanitizedRequests,
     });
   } catch (error) {
     next(error);
@@ -182,15 +210,67 @@ const getRequestById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const request = await ServiceRequest.findById(id)
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service request ID format.',
+      });
+    }
+
+    const requestDoc = await ServiceRequest.findById(id)
       .populate('requester', 'name email phone avatar location')
       .populate('assignedVolunteer', 'name email phone avatar rating');
 
-    if (!request) {
+    if (!requestDoc) {
       return res.status(404).json({
         success: false,
         message: 'Service request not found.',
       });
+    }
+
+    const request = requestDoc.toObject();
+
+    // Authorization check for revealing private PII (contact details & exact address)
+    const requesterId = request.requester?._id?.toString() || request.requester?.toString();
+    const isRequester = req.user && req.user._id.toString() === requesterId;
+    const isAdmin = req.user && req.user.role === USER_ROLES.ADMIN;
+    const volunteerId = request.assignedVolunteer?._id?.toString() || request.assignedVolunteer?.toString();
+    const isAssignedVolunteer =
+      req.user &&
+      volunteerId &&
+      req.user._id.toString() === volunteerId &&
+      [REQUEST_STATUS.IN_PROGRESS, REQUEST_STATUS.COMPLETED].includes(request.status);
+
+    const isAuthorized = isRequester || isAdmin || isAssignedVolunteer;
+
+    if (!isAuthorized) {
+      // Redact requester sensitive contact details
+      if (request.requester) {
+        delete request.requester.email;
+        delete request.requester.phone;
+        if (request.requester.location) {
+          request.requester.location = {
+            city: request.requester.location.city,
+            state: request.requester.location.state,
+          };
+        }
+      }
+
+      // Redact volunteer contact details for third parties
+      if (request.assignedVolunteer) {
+        delete request.assignedVolunteer.email;
+        delete request.assignedVolunteer.phone;
+      }
+
+      // Redact specific home street address from public request view
+      if (request.location) {
+        request.location = {
+          type: request.location.type,
+          coordinates: request.location.coordinates,
+          city: request.location.city,
+          state: request.location.state,
+        };
+      }
     }
 
     res.status(200).json({
@@ -210,12 +290,28 @@ const getRequestById = async (req, res, next) => {
 const updateRequest = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service request ID format.',
+      });
+    }
+
     let request = await ServiceRequest.findById(id);
 
     if (!request) {
       return res.status(404).json({
         success: false,
         message: 'Service request not found.',
+      });
+    }
+
+    // Immutable lifecycle check
+    if ([REQUEST_STATUS.COMPLETED, REQUEST_STATUS.CANCELLED].includes(request.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot edit a service request that is already ${request.status.toLowerCase()}.`,
       });
     }
 
@@ -230,14 +326,11 @@ const updateRequest = async (req, res, next) => {
       });
     }
 
-    // Prevent modifications if task is already in progress or completed
-    if (
-      [REQUEST_STATUS.IN_PROGRESS, REQUEST_STATUS.COMPLETED].includes(request.status) &&
-      !isAdmin
-    ) {
+    // Prevent modifications if task is already in progress
+    if (request.status === REQUEST_STATUS.IN_PROGRESS && !isAdmin) {
       return res.status(400).json({
         success: false,
-        message: `Cannot edit a request that is currently ${request.status}.`,
+        message: 'Cannot edit a request that is currently in progress.',
       });
     }
 
@@ -297,11 +390,33 @@ const deleteRequest = async (req, res, next) => {
     const { id } = req.params;
     const { reason } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service request ID format.',
+      });
+    }
+
     const request = await ServiceRequest.findById(id);
     if (!request) {
       return res.status(404).json({
         success: false,
         message: 'Service request not found.',
+      });
+    }
+
+    // Lifecycle transition rules: Completed and Cancelled requests cannot be cancelled
+    if (request.status === REQUEST_STATUS.COMPLETED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel a service request that is already completed.',
+      });
+    }
+
+    if (request.status === REQUEST_STATUS.CANCELLED) {
+      return res.status(400).json({
+        success: false,
+        message: 'This service request is already cancelled.',
       });
     }
 
@@ -321,6 +436,20 @@ const deleteRequest = async (req, res, next) => {
 
     await request.save();
 
+    // Automatically cancel all active / offered assignments for this request
+    await Assignment.updateMany(
+      {
+        request: id,
+        status: { $in: [ASSIGNMENT_STATUS.OFFERED, ASSIGNMENT_STATUS.ACCEPTED] },
+      },
+      {
+        $set: {
+          status: ASSIGNMENT_STATUS.CANCELLED,
+          notes: reason ? `Request cancelled: ${reason}` : 'Request was cancelled by requester',
+        },
+      }
+    );
+
     res.status(200).json({
       success: true,
       message: 'Service request cancelled successfully.',
@@ -339,6 +468,14 @@ const deleteRequest = async (req, res, next) => {
 const getRequestMatches = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid service request ID format.',
+      });
+    }
+
     const { limit = 10, minScore = 20 } = req.query;
 
     const request = await ServiceRequest.findById(id).populate(

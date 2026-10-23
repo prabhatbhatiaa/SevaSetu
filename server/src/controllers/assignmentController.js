@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const {
   Assignment,
   ServiceRequest,
@@ -16,8 +17,20 @@ const { calculateMatchScore } = require('../algorithms/volunteerMatcher');
  * @access  Private (Requester, Volunteer, or Admin)
  */
 const createAssignment = async (req, res, next) => {
+  let requestLocked = false;
+  let targetVolunteerId;
+  let requestId;
+
   try {
-    const { requestId, volunteerId, notes } = req.body;
+    const { requestId: reqId, volunteerId, notes } = req.body;
+    requestId = reqId;
+
+    if (!requestId || !mongoose.Types.ObjectId.isValid(requestId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid service request ID is required.',
+      });
+    }
 
     const request = await ServiceRequest.findById(requestId);
     if (!request) {
@@ -34,7 +47,6 @@ const createAssignment = async (req, res, next) => {
       });
     }
 
-    let targetVolunteerId;
     let isSelfClaim = false;
 
     if (req.user.role === USER_ROLES.VOLUNTEER) {
@@ -51,18 +63,18 @@ const createAssignment = async (req, res, next) => {
         });
       }
 
-      if (!volunteerId) {
+      if (!volunteerId || !mongoose.Types.ObjectId.isValid(volunteerId)) {
         return res.status(400).json({
           success: false,
-          message: 'Volunteer ID is required to create an assignment.',
+          message: 'A valid Volunteer ID is required to create an assignment.',
         });
       }
       targetVolunteerId = volunteerId;
     } else if (req.user.role === USER_ROLES.ADMIN) {
-      if (!volunteerId) {
+      if (!volunteerId || !mongoose.Types.ObjectId.isValid(volunteerId)) {
         return res.status(400).json({
           success: false,
-          message: 'Volunteer ID is required to create an assignment.',
+          message: 'A valid Volunteer ID is required to create an assignment.',
         });
       }
       targetVolunteerId = volunteerId;
@@ -88,7 +100,7 @@ const createAssignment = async (req, res, next) => {
     });
 
     if (existingActive) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: 'An active assignment already exists for this volunteer and request.',
       });
@@ -109,23 +121,64 @@ const createAssignment = async (req, res, next) => {
       newRequestStatus = REQUEST_STATUS.ASSIGNED;
     }
 
-    // Update ServiceRequest
-    request.status = newRequestStatus;
-    request.assignedVolunteer = targetVolunteerId;
-    request.assignedAt = new Date();
-    await request.save();
+    // Atomically lock and transition the ServiceRequest from PENDING to prevent race conditions
+    const assignedTime = new Date();
+    const updatedRequest = await ServiceRequest.findOneAndUpdate(
+      { _id: requestId, status: REQUEST_STATUS.PENDING },
+      {
+        $set: {
+          status: newRequestStatus,
+          assignedVolunteer: targetVolunteerId,
+          assignedAt: assignedTime,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedRequest) {
+      return res.status(409).json({
+        success: false,
+        message: 'Service request is no longer available or was concurrently assigned.',
+      });
+    }
+
+    requestLocked = true;
 
     // Create Assignment
-    const assignment = await Assignment.create({
-      request: request._id,
-      volunteer: targetVolunteerId,
-      matchScore: matchResult.matchScore,
-      scoreBreakdown: matchResult.breakdown,
-      status: initialAssignmentStatus,
-      offeredAt: new Date(),
-      respondedAt: isSelfClaim ? new Date() : null,
-      notes: notes || '',
-    });
+    let assignment;
+    try {
+      assignment = await Assignment.create({
+        request: request._id,
+        volunteer: targetVolunteerId,
+        matchScore: matchResult.matchScore,
+        scoreBreakdown: matchResult.breakdown,
+        status: initialAssignmentStatus,
+        offeredAt: assignedTime,
+        respondedAt: isSelfClaim ? assignedTime : null,
+        notes: notes || '',
+      });
+    } catch (createError) {
+      // Revert the ServiceRequest status if assignment creation fails (e.g., unique index violation)
+      await ServiceRequest.findOneAndUpdate(
+        { _id: requestId, assignedVolunteer: targetVolunteerId },
+        {
+          $set: {
+            status: REQUEST_STATUS.PENDING,
+            assignedVolunteer: null,
+            assignedAt: null,
+          },
+        }
+      );
+      requestLocked = false;
+
+      if (createError.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: 'An active assignment already exists for this request.',
+        });
+      }
+      throw createError;
+    }
 
     const populated = await Assignment.findById(assignment._id)
       .populate('request')
@@ -139,8 +192,50 @@ const createAssignment = async (req, res, next) => {
       data: populated,
     });
   } catch (error) {
+    if (requestLocked && targetVolunteerId && requestId) {
+      await ServiceRequest.findOneAndUpdate(
+        { _id: requestId, assignedVolunteer: targetVolunteerId },
+        {
+          $set: {
+            status: REQUEST_STATUS.PENDING,
+            assignedVolunteer: null,
+            assignedAt: null,
+          },
+        }
+      ).catch(() => {});
+    }
     next(error);
   }
+};
+
+/**
+ * Helper to redact contact information from assignments before acceptance
+ */
+const redactAssignmentContacts = (assignmentDoc, callerId, callerRole) => {
+  const doc = assignmentDoc.toObject ? assignmentDoc.toObject() : { ...assignmentDoc };
+  const isAdmin = callerRole === USER_ROLES.ADMIN;
+  const isAcceptedOrDone = [
+    ASSIGNMENT_STATUS.ACCEPTED,
+    ASSIGNMENT_STATUS.COMPLETED,
+  ].includes(doc.status);
+
+  if (!isAdmin && !isAcceptedOrDone) {
+    if (doc.request?.requester && typeof doc.request.requester === 'object') {
+      const isSelfRequester = doc.request.requester._id?.toString() === callerId?.toString();
+      if (!isSelfRequester) {
+        delete doc.request.requester.email;
+        delete doc.request.requester.phone;
+      }
+    }
+    if (doc.volunteer && typeof doc.volunteer === 'object') {
+      const isSelfVolunteer = doc.volunteer._id?.toString() === callerId?.toString();
+      if (!isSelfVolunteer) {
+        delete doc.volunteer.email;
+        delete doc.volunteer.phone;
+      }
+    }
+  }
+  return doc;
 };
 
 /**
@@ -152,6 +247,20 @@ const respondToAssignment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { action, notes } = req.body;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid assignment ID is required.',
+      });
+    }
+
+    if (!['accept', 'decline'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Action must be either 'accept' or 'decline'.",
+      });
+    }
 
     const assignment = await Assignment.findById(id);
     if (!assignment) {
@@ -179,50 +288,81 @@ const respondToAssignment = async (req, res, next) => {
       });
     }
 
-    const request = await ServiceRequest.findById(assignment.request);
-    if (!request) {
-      return res.status(404).json({
-        success: false,
-        message: 'Associated service request not found.',
-      });
-    }
-
-    if (notes) {
-      assignment.notes = notes;
-    }
-    assignment.respondedAt = new Date();
+    const respondedTime = new Date();
 
     if (action === 'accept') {
-      assignment.status = ASSIGNMENT_STATUS.ACCEPTED;
-      request.status = REQUEST_STATUS.IN_PROGRESS;
-      await Promise.all([assignment.save(), request.save()]);
+      // Atomically update assignment status from OFFERED to ACCEPTED
+      const updatedAssignment = await Assignment.findOneAndUpdate(
+        { _id: id, status: ASSIGNMENT_STATUS.OFFERED },
+        {
+          $set: {
+            status: ASSIGNMENT_STATUS.ACCEPTED,
+            respondedAt: respondedTime,
+            ...(notes ? { notes } : {}),
+          },
+        },
+        { new: true }
+      );
+
+      if (!updatedAssignment) {
+        return res.status(409).json({
+          success: false,
+          message: 'Assignment has already been responded to or is no longer offered.',
+        });
+      }
+
+      // Update associated service request to IN_PROGRESS
+      await ServiceRequest.findOneAndUpdate(
+        { _id: updatedAssignment.request },
+        { $set: { status: REQUEST_STATUS.IN_PROGRESS } }
+      );
 
       return res.status(200).json({
         success: true,
         message: 'Assignment accepted. Request is now in progress.',
-        data: assignment,
+        data: updatedAssignment,
       });
     }
 
     if (action === 'decline') {
-      assignment.status = ASSIGNMENT_STATUS.DECLINED;
+      // Atomically update assignment status from OFFERED to DECLINED
+      const updatedAssignment = await Assignment.findOneAndUpdate(
+        { _id: id, status: ASSIGNMENT_STATUS.OFFERED },
+        {
+          $set: {
+            status: ASSIGNMENT_STATUS.DECLINED,
+            respondedAt: respondedTime,
+            ...(notes ? { notes } : {}),
+          },
+        },
+        { new: true }
+      );
+
+      if (!updatedAssignment) {
+        return res.status(409).json({
+          success: false,
+          message: 'Assignment has already been responded to or is no longer offered.',
+        });
+      }
+
       // Revert request back to PENDING so other volunteers can match
-      request.status = REQUEST_STATUS.PENDING;
-      request.assignedVolunteer = null;
-      request.assignedAt = null;
-      await Promise.all([assignment.save(), request.save()]);
+      await ServiceRequest.findOneAndUpdate(
+        { _id: updatedAssignment.request, assignedVolunteer: updatedAssignment.volunteer },
+        {
+          $set: {
+            status: REQUEST_STATUS.PENDING,
+            assignedVolunteer: null,
+            assignedAt: null,
+          },
+        }
+      );
 
       return res.status(200).json({
         success: true,
         message: 'Assignment declined. Service request returned to pending pool.',
-        data: assignment,
+        data: updatedAssignment,
       });
     }
-
-    return res.status(400).json({
-      success: false,
-      message: "Action must be either 'accept' or 'decline'.",
-    });
   } catch (error) {
     next(error);
   }
@@ -237,6 +377,13 @@ const completeAssignment = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid assignment ID is required.',
+      });
+    }
 
     const assignment = await Assignment.findById(id);
     if (!assignment) {
@@ -267,6 +414,19 @@ const completeAssignment = async (req, res, next) => {
       });
     }
 
+    // Idempotency: if already completed, return clean success without double-incrementing counters
+    if (assignment.status === ASSIGNMENT_STATUS.COMPLETED) {
+      const populated = await Assignment.findById(assignment._id)
+        .populate('request')
+        .populate('volunteer', 'name email avatar');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Assignment is already marked as completed.',
+        data: populated,
+      });
+    }
+
     if (
       assignment.status !== ASSIGNMENT_STATUS.ACCEPTED ||
       request.status !== REQUEST_STATUS.IN_PROGRESS
@@ -279,24 +439,54 @@ const completeAssignment = async (req, res, next) => {
 
     const completedTime = new Date();
 
-    assignment.status = ASSIGNMENT_STATUS.COMPLETED;
-    assignment.completedAt = completedTime;
-    if (notes) assignment.notes = notes;
+    // Atomically transition assignment status from ACCEPTED to COMPLETED
+    const updatedAssignment = await Assignment.findOneAndUpdate(
+      { _id: id, status: ASSIGNMENT_STATUS.ACCEPTED },
+      {
+        $set: {
+          status: ASSIGNMENT_STATUS.COMPLETED,
+          completedAt: completedTime,
+          ...(notes ? { notes } : {}),
+        },
+      },
+      { new: true }
+    );
 
-    request.status = REQUEST_STATUS.COMPLETED;
-    request.completedAt = completedTime;
+    if (!updatedAssignment) {
+      // Race condition handled: assignment was transitioned concurrently
+      const fresh = await Assignment.findById(id)
+        .populate('request')
+        .populate('volunteer', 'name email avatar');
 
-    // Save and increment volunteer completed tasks count
+      if (fresh && fresh.status === ASSIGNMENT_STATUS.COMPLETED) {
+        return res.status(200).json({
+          success: true,
+          message: 'Service request and assignment completed successfully.',
+          data: fresh,
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        message: 'Could not complete task: assignment status has changed.',
+      });
+    }
+
+    // Exactly-once execution for request and volunteer counter
     await Promise.all([
-      assignment.save(),
-      request.save(),
+      ServiceRequest.findByIdAndUpdate(updatedAssignment.request, {
+        $set: {
+          status: REQUEST_STATUS.COMPLETED,
+          completedAt: completedTime,
+        },
+      }),
       VolunteerProfile.findOneAndUpdate(
-        { user: assignment.volunteer },
+        { user: updatedAssignment.volunteer },
         { $inc: { completedTasks: 1 } }
       ),
     ]);
 
-    const updated = await Assignment.findById(assignment._id)
+    const updated = await Assignment.findById(updatedAssignment._id)
       .populate('request')
       .populate('volunteer', 'name email avatar');
 
@@ -326,6 +516,12 @@ const getAssignments = async (req, res, next) => {
     }
 
     if (requestId) {
+      if (!mongoose.Types.ObjectId.isValid(requestId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid request ID parameter.',
+        });
+      }
       query.request = requestId;
     }
 
@@ -357,13 +553,17 @@ const getAssignments = async (req, res, next) => {
       Assignment.countDocuments(query),
     ]);
 
+    const sanitizedAssignments = assignments.map((a) =>
+      redactAssignmentContacts(a, req.user._id, req.user.role)
+    );
+
     res.status(200).json({
       success: true,
-      count: assignments.length,
+      count: sanitizedAssignments.length,
       total,
       totalPages: Math.ceil(total / limitNum),
       currentPage: pageNum,
-      data: assignments,
+      data: sanitizedAssignments,
     });
   } catch (error) {
     next(error);
@@ -378,6 +578,13 @@ const getAssignments = async (req, res, next) => {
 const getAssignmentById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid assignment ID parameter.',
+      });
+    }
 
     const assignment = await Assignment.findById(id)
       .populate({
@@ -406,9 +613,15 @@ const getAssignmentById = async (req, res, next) => {
       });
     }
 
+    const sanitized = redactAssignmentContacts(
+      assignment,
+      req.user._id,
+      req.user.role
+    );
+
     res.status(200).json({
       success: true,
-      data: assignment,
+      data: sanitized,
     });
   } catch (error) {
     next(error);

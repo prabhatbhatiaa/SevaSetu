@@ -2,21 +2,26 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
-const { connectDB } = require('./src/config/db');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
+const { connectDB, disconnectDB } = require('./src/config/db');
 
 // Load environment variables
 dotenv.config();
 
+// Enforce strong JWT secret in production mode
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET must be configured with at least 32 characters in production.');
+    process.exit(1);
+  }
+}
+
 // Initialize express app
 const app = express();
 
-// Enable trust proxy (essential for rate limiting and secure cookies behind Nginx/Render/Railway)
+// Enable trust proxy (essential for rate limiting and secure headers behind Nginx/Render/Railway)
 app.set('trust proxy', 1);
-
-// Connect to MongoDB (skip auto-connect in test mode so tests manage their own isolated database)
-if (process.env.NODE_ENV !== 'test') {
-  connectDB();
-}
 
 const {
   helmetMiddleware,
@@ -24,6 +29,14 @@ const {
   hppMiddleware,
   apiLimiter,
 } = require('./src/middleware/security');
+
+// Request correlation ID tracking
+app.use((req, res, next) => {
+  const reqId = req.headers['x-request-id'] || crypto.randomUUID();
+  req.id = reqId;
+  res.setHeader('X-Request-Id', reqId);
+  next();
+});
 
 // Security HTTP headers
 app.use(helmetMiddleware);
@@ -51,7 +64,7 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Health & Root routes
+// Health & Probes
 app.get('/', (req, res) => {
   res.status(200).json({
     project: 'SevaSetu API',
@@ -62,10 +75,37 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
+// Liveness probe (process responsive)
+app.get('/api/live', (req, res) => {
   res.status(200).json({
-    status: 'healthy',
-    uptime: process.uptime(),
+    status: 'alive',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Readiness probe (database readiness check)
+app.get('/api/ready', (req, res) => {
+  const isDbReady = mongoose.connection.readyState === 1;
+  if (isDbReady) {
+    return res.status(200).json({
+      status: 'ready',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  }
+  return res.status(503).json({
+    status: 'unready',
+    database: 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  const isDbReady = mongoose.connection.readyState === 1;
+  res.status(isDbReady ? 200 : 503).json({
+    status: isDbReady ? 'healthy' : 'degraded',
+    uptime: Math.floor(process.uptime()),
+    database: isDbReady ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
   });
 });
@@ -90,26 +130,99 @@ app.use((req, res, next) => {
   });
 });
 
-// Global Error Handler
+// Global Safe Production Error Handler
 app.use((err, req, res, next) => {
-  console.error('[Server Error]', err.stack || err.message);
-  res.status(err.status || 500).json({
+  const isProduction = process.env.NODE_ENV === 'production';
+  const correlationId = req.id;
+
+  // Internal logging with correlation ID
+  console.error(`[Error][${correlationId || 'N/A'}]`, err.stack || err.message);
+
+  let statusCode = err.status || 500;
+  let message = err.message || 'Internal Server Error';
+
+  // Handle Mongoose CastError (e.g. invalid ObjectId)
+  if (err.name === 'CastError') {
+    statusCode = 400;
+    message = `Invalid value '${err.value}' for field '${err.path}'.`;
+  }
+
+  // Handle Mongoose ValidationError
+  if (err.name === 'ValidationError') {
+    statusCode = 400;
+    const errorDetails = Object.values(err.errors || {}).map((e) => e.message);
+    message = errorDetails.length > 0 ? errorDetails.join(', ') : 'Validation error.';
+  }
+
+  // Handle MongoDB Duplicate Key (E11000)
+  if (err.code === 11000) {
+    statusCode = 409;
+    const field = Object.keys(err.keyValue || {})[0] || 'resource';
+    message = `A record with this ${field} already exists.`;
+  }
+
+  // Mask internal 500 error messages in production
+  if (isProduction && statusCode === 500) {
+    message = 'An unexpected internal server error occurred. Please try again later.';
+  }
+
+  res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    message,
+    requestId: correlationId,
+    ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {}),
   });
 });
 
 const PORT = process.env.PORT || 5000;
+let server;
 
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`=========================================`);
-    console.log(`  SevaSetu API Server running on port ${PORT}`);
-    console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`  Client Origin: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
-    console.log(`=========================================`);
-  });
+async function startServer() {
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      await connectDB();
+      server = app.listen(PORT, () => {
+        console.log(`=========================================`);
+        console.log(`  SevaSetu API Server running on port ${PORT}`);
+        console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`  Client Origin: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+        console.log(`=========================================`);
+      });
+
+      const gracefulShutdown = async (signal) => {
+        console.log(`\n[Server] Received ${signal}. Commencing graceful shutdown...`);
+        if (server) {
+          server.close(async () => {
+            console.log('[Server] HTTP connections closed.');
+            try {
+              await disconnectDB();
+              console.log('[Server] Database disconnected cleanly.');
+              process.exit(0);
+            } catch (closeErr) {
+              console.error('[Server] Error during database disconnect:', closeErr);
+              process.exit(1);
+            }
+          });
+
+          // Force shutdown if ongoing requests do not complete within 10 seconds
+          setTimeout(() => {
+            console.error('[Server] Forced shutdown after timeout.');
+            process.exit(1);
+          }, 10000).unref();
+        } else {
+          process.exit(0);
+        }
+      };
+
+      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    } catch (startupErr) {
+      console.error('Failed to start server:', startupErr);
+      process.exit(1);
+    }
+  }
 }
+
+startServer();
 
 module.exports = app;

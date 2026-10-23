@@ -21,16 +21,20 @@ const protect = async (req, res, next) => {
     });
   }
 
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server security configuration error: JWT_SECRET is not defined.',
+    });
+  }
+
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg',
-      {
-        algorithms: ['HS256'],
-        issuer: 'sevasetu-platform',
-        audience: 'sevasetu-client',
-      }
-    );
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ['HS256'],
+      issuer: 'sevasetu-platform',
+      audience: 'sevasetu-client',
+    });
 
     const user = await User.findById(decoded.id);
 
@@ -45,6 +49,18 @@ const protect = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: 'This user account has been deactivated.',
+      });
+    }
+
+    // Check token revocation / session version
+    if (
+      decoded.tokenVersion !== undefined &&
+      user.tokenVersion !== undefined &&
+      decoded.tokenVersion !== user.tokenVersion
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session has been revoked or password changed. Please log in again.',
       });
     }
 
@@ -105,18 +121,23 @@ const optionalAuth = async (req, res, next) => {
     return next();
   }
 
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return next();
+  }
+
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || 'sevasetu_super_secure_jwt_secret_dev_key_2026_sdg',
-      {
-        algorithms: ['HS256'],
-        issuer: 'sevasetu-platform',
-        audience: 'sevasetu-client',
-      }
-    );
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ['HS256'],
+      issuer: 'sevasetu-platform',
+      audience: 'sevasetu-client',
+    });
     const user = await User.findById(decoded.id);
-    if (user && user.isActive) {
+    if (
+      user &&
+      user.isActive &&
+      (decoded.tokenVersion === undefined || user.tokenVersion === undefined || decoded.tokenVersion === user.tokenVersion)
+    ) {
       req.user = user;
     }
   } catch (err) {

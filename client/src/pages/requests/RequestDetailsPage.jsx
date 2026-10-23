@@ -45,7 +45,7 @@ function PersonCard({ title, person }) {
           )}
         </div>
       </div>
-      {(person.email || person.phone) && (
+      {(person.email || person.phone) ? (
         <div className="mt-4 space-y-2 border-t pt-4 text-sm text-muted">
           {person.email && (
             <a href={`mailto:${person.email}`} className="flex items-center gap-2 transition-colors hover:text-ink">
@@ -58,6 +58,10 @@ function PersonCard({ title, person }) {
             </a>
           )}
         </div>
+      ) : (
+        <p className="mt-3 border-t pt-3 text-xs text-muted">
+          Contact details are private and shared only after an assignment is accepted.
+        </p>
       )}
     </section>
   );

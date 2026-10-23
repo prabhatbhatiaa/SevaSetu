@@ -41,8 +41,8 @@ const validateRegister = [
     .withMessage('Password must be at least 6 characters long'),
   body('role')
     .optional()
-    .isIn(Object.values(USER_ROLES))
-    .withMessage(`Role must be one of: ${Object.values(USER_ROLES).join(', ')}`),
+    .isIn([USER_ROLES.COMMUNITY_MEMBER, USER_ROLES.VOLUNTEER])
+    .withMessage('Role must be either community_member or volunteer'),
   body('phone')
     .optional()
     .trim()

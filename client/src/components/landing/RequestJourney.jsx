@@ -75,37 +75,41 @@ export function RequestJourney() {
   const routeInput = useMemo(() => ({ progress: active / (STEPS.length - 1) }), [active]);
 
   return (
-    <section id="how-it-works" data-act="journey" className="scroll-mt-16 py-16 sm:py-20">
+    <section id="how-it-works" data-act="journey" className="scroll-mt-16 py-10 sm:py-16 lg:py-20">
       <div className="container-page">
         <p className="eyebrow reveal">How it works</p>
-        <h2 className="display reveal mt-4 text-[44px] sm:text-6xl">
+        <h2 className="display reveal mt-3 sm:mt-4 text-[30px] sm:text-5xl lg:text-6xl leading-[1.12]">
           How a request <em>travels</em>.
         </h2>
 
-        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
-          <ol className="order-2 lg:order-1">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+          <ol className="order-1 w-full">
             {STEPS.map((item, index) => (
               <li
                 key={item.title}
                 ref={(element) => (stepRefs.current[index] = element)}
                 className={cn(
-                  'flex gap-5 border-t py-7 transition-opacity duration-500 lg:py-9',
-                  index === active ? 'opacity-100' : 'lg:opacity-35',
+                  'flex gap-3.5 sm:gap-5 border-t py-4 sm:py-7 transition-opacity duration-500 lg:py-9',
+                  index === active ? 'opacity-100' : 'opacity-65 lg:opacity-35',
                 )}
               >
-                <span className="font-serif text-3xl italic text-accent">{index + 1}</span>
-                <div>
-                  <h3 className="text-[26px] font-medium leading-tight tracking-tight sm:text-3xl">{item.title}</h3>
-                  <p className="mt-2 max-w-sm text-[15px] leading-relaxed text-muted">{item.text}</p>
+                <span className="font-serif text-2xl sm:text-3xl italic text-accent">{index + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-medium leading-snug tracking-tight sm:text-[26px] lg:text-3xl">{item.title}</h3>
+                  <p className="mt-1 sm:mt-2 max-w-sm text-[13px] sm:text-[15px] leading-relaxed text-muted">{item.text}</p>
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-line/15 bg-surface/80 px-2.5 py-0.5 text-[11px] text-subtle lg:hidden">
+                    <span className="h-1 w-1 rounded-full bg-accent" />
+                    <span>{item.note}</span>
+                  </div>
                 </div>
               </li>
             ))}
           </ol>
 
-          <div className="order-1 lg:order-2">
+          <div className="hidden lg:block order-2">
             <div className="lg:sticky lg:top-24">
-              <Scene name="route" input={routeInput} className="h-[320px] sm:h-[340px] lg:h-[380px]" />
-              <div className="mx-auto hidden max-w-sm rounded-2xl border bg-surface p-5 lg:block">
+              <Scene name="route" input={routeInput} className="h-[340px] lg:h-[380px]" />
+              <div className="mx-auto max-w-sm rounded-2xl border bg-surface p-5">
                 <div className="flex items-center justify-between gap-3">
                   <CategoryLabel category="Document Assistance" />
                   <StatusBadge status={step.status} />
