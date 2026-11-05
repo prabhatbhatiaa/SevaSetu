@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Avatar, Button, Logo, cn } from '../ui';
 import { SiteHeader } from './SiteHeader';
+import { EmailVerificationBanner } from '../auth/EmailVerificationBanner';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABELS } from '../../lib/constants';
 import { REQUESTS_CHANGED_EVENT } from '../../lib/hooks';
@@ -187,6 +188,7 @@ export default function AppShell() {
 
       <div className="lg:pl-64">
         <main className="mx-auto max-w-[1180px] px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+          <EmailVerificationBanner />
           <Outlet context={{ openCreateRequest: () => setCreating(true) }} />
         </main>
       </div>

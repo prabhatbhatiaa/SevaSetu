@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { USER_ROLES } = require('./constants');
 
 const userSchema = new mongoose.Schema(
@@ -75,6 +76,26 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
     tokenVersion: {
       type: Number,
       default: 0,
@@ -85,6 +106,10 @@ const userSchema = new mongoose.Schema(
     toJSON: {
       transform(doc, ret) {
         delete ret.password;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpires;
+        delete ret.resetPasswordToken;
+        delete ret.resetPasswordExpires;
         delete ret.__v;
         return ret;
       },
@@ -132,7 +157,12 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Instance method to generate signed JWT token
 userSchema.methods.generateAuthToken = function () {
-  const secret = process.env.JWT_SECRET;
+  const secret =
+    process.env.JWT_SECRET ||
+    (process.env.NODE_ENV === 'test'
+      ? 'test_jwt_secret_key_minimum_32_characters_long_for_tests'
+      : null);
+
   if (!secret) {
     throw new Error('JWT_SECRET is not configured on this server.');
   }
@@ -143,6 +173,7 @@ userSchema.methods.generateAuthToken = function () {
       role: this.role,
       email: this.email,
       name: this.name,
+      isEmailVerified: Boolean(this.isEmailVerified),
       tokenVersion: this.tokenVersion || 0,
     },
     secret,
@@ -153,6 +184,22 @@ userSchema.methods.generateAuthToken = function () {
       expiresIn: process.env.JWT_EXPIRE || '30d',
     }
   );
+};
+
+// Generate and hash email verification token (valid for 24 hours)
+userSchema.methods.generateEmailVerificationToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto.createHash('sha256').update(token).digest('hex');
+  this.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return token;
+};
+
+// Generate and hash password reset token (valid for 1 hour)
+userSchema.methods.generatePasswordResetToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+  this.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
+  return token;
 };
 
 const User = mongoose.model('User', userSchema);

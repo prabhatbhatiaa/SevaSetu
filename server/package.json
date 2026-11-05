@@ -10,7 +10,7 @@
     "seed": "node src/seeds/seedData.js",
     "seed:clean": "node src/seeds/seedData.js --clean",
     "seed:admin": "node src/seeds/seedData.js --admin-only",
-    "test": "jest --detectOpenHandles --forceExit"
+    "test": "jest --detectOpenHandles --forceExit --runInBand"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -24,7 +24,8 @@
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.2",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "nodemailer": "^10.3.1"
   },
   "devDependencies": {
     "jest": "^29.7.0",

@@ -76,7 +76,13 @@ export default function LoginPage() {
           />
         </Field>
 
-        <Field label="Password">
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="label">Password</span>
+            <Link to="/forgot-password" className="text-xs text-muted hover:text-ink transition-colors">
+              Forgot password?
+            </Link>
+          </div>
           <div className="relative">
             <Input
               type={showPassword ? 'text' : 'password'}
@@ -95,7 +101,7 @@ export default function LoginPage() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-        </Field>
+        </div>
 
         <FormError>{error}</FormError>
 

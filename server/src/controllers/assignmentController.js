@@ -100,7 +100,7 @@ const createAssignment = async (req, res, next) => {
     });
 
     if (existingActive) {
-      return res.status(409).json({
+      return res.status(400).json({
         success: false,
         message: 'An active assignment already exists for this volunteer and request.',
       });
