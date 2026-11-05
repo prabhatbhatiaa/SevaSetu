@@ -48,10 +48,16 @@ export function AuthProvider({ children }) {
       return data.user;
     };
 
+    const setSession = (token, userObj) => {
+      localStorage.setItem(TOKEN_KEY, token);
+      setUser(userObj);
+    };
+
     return {
       user,
       loading,
       setUser,
+      setSession,
       logout,
       login: (email, password) => startSession('/auth/login', { email, password }),
       register: (details) => startSession('/auth/register', details),

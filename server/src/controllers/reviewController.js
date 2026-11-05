@@ -70,7 +70,7 @@ const createReview = async (req, res, next) => {
     // Check if review already exists for this request
     const existingReview = await Review.findOne({ request: requestId });
     if (existingReview) {
-      return res.status(409).json({
+      return res.status(400).json({
         success: false,
         message: 'A review has already been submitted for this service request.',
       });

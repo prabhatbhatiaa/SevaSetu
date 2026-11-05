@@ -82,17 +82,16 @@ describe('Task 7: Reviews, Ratings and Community Impact Analytics Integration Te
     volunteerUser = volRes.body.user;
     volunteerProfile = await VolunteerProfile.findOne({ user: volunteerUser._id });
 
-    // Register an admin
-    const adminRes = await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'System Admin',
-        email: 'admin@sevasetu.org',
-        password: 'Password123!',
-        role: USER_ROLES.ADMIN,
-      });
-    adminToken = adminRes.body.token;
-    adminUser = adminRes.body.user;
+    // Create an admin user directly (public registration of admins is disallowed)
+    const adminUserDoc = await User.create({
+      name: 'System Admin',
+      email: 'admin@sevasetu.org',
+      password: 'Password123!',
+      role: USER_ROLES.ADMIN,
+      isEmailVerified: true,
+    });
+    adminUser = adminUserDoc.toJSON();
+    adminToken = adminUserDoc.generateAuthToken();
   });
 
   describe('7.1 Review Submission & Auto-Rating Recalculation (POST /api/reviews)', () => {
