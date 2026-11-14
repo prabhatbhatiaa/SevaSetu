@@ -117,6 +117,7 @@ app.use('/api/requests', require('./src/routes/requestRoutes'));
 app.use('/api/assignments', require('./src/routes/assignmentRoutes'));
 app.use('/api/reviews', require('./src/routes/reviewRoutes'));
 app.use('/api/impact', require('./src/routes/impactRoutes'));
+app.use('/api/locations', require('./src/routes/locationRoutes'));
 app.use('/api/public/impact', (req, res, next) => {
   req.url = '/statistics';
   require('./src/routes/impactRoutes')(req, res, next);
@@ -181,6 +182,8 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'test') {
     try {
       await connectDB();
+      const { verifySmtpConnection } = require('./src/utils/mailer');
+      verifySmtpConnection(); // fire-and-forget; logs success or failure
       server = app.listen(PORT, () => {
         console.log(`=========================================`);
         console.log(`  SevaSetu API Server running on port ${PORT}`);

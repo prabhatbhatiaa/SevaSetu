@@ -173,15 +173,22 @@
 /* Leaflet, themed to match the app */
 .leaflet-container {
   font-family: Inter, system-ui, sans-serif;
-  background: rgb(var(--raised));
+  background: #eef2f6;
+  outline: none;
+}
+
+/* Light mode: crisp vibrant natural map colors - never grayscale */
+:root:not(.dark) .leaflet-tile-pane {
+  filter: none;
+}
+
+/* Dark mode: sleek dark-slate theme with preserved water and landmark hues */
+.dark .leaflet-container {
+  background: #12141a;
 }
 
 .dark .leaflet-tile-pane {
-  filter: grayscale(1) invert(1) brightness(0.9) contrast(0.85);
-}
-
-:root:not(.dark) .leaflet-tile-pane {
-  filter: grayscale(1) contrast(0.95);
+  filter: brightness(0.75) invert(1) contrast(1.2) hue-rotate(180deg) saturate(0.85);
 }
 
 .leaflet-popup-content-wrapper,

@@ -204,7 +204,7 @@ export default function CreateRequestModal({ open, onClose, onCreated }) {
           <MapPicker
             value={location}
             onChange={(next) => setLocation((current) => ({ ...current, ...next }))}
-            height={220}
+            height={320}
           />
         </div>
 

@@ -291,7 +291,7 @@ export default function VolunteerDashboard({ user }) {
             <Panel title="Nearby">
               <RequestsMap
                 requests={matches.map((match) => match.request)}
-                height={240}
+                height={320}
                 linkTo={(request) => `/dashboard/requests/${request._id}`}
               />
             </Panel>
