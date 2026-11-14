@@ -182,7 +182,7 @@ export default function RegisterPage() {
           <MapPicker
             value={location}
             onChange={(next) => setLocation((current) => ({ ...current, ...next }))}
-            height={220}
+            height={320}
           />
 
           {isVolunteer && (

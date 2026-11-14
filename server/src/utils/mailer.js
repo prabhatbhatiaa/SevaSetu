@@ -168,7 +168,28 @@ const sendPasswordResetEmail = async ({ to, name, token }) => {
   }
 };
 
+/**
+ * Run once at server startup to verify SMTP credentials are valid.
+ * No-op if SMTP env vars are not set (dev/console mode).
+ */
+const verifySmtpConnection = async () => {
+  if (!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) {
+    console.log('[Mailer] No SMTP config detected — running in console (dev) mode.');
+    return;
+  }
+
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    console.log('[Mailer] ✅ SMTP connected successfully via', process.env.SMTP_HOST);
+  } catch (err) {
+    console.error('[Mailer] ❌ SMTP connection failed:', err.message);
+    console.error('[Mailer]    Check SMTP_HOST / SMTP_USER / SMTP_PASS env vars.');
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
+  verifySmtpConnection,
 };

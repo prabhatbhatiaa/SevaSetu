@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DEFAULT_CENTER } from '../../lib/constants';
-import { TILE_ATTRIBUTION, TILE_URL, pinForUrgency, toLatLng } from './leaflet';
+import { AutoInvalidateSize, TILE_ATTRIBUTION, TILE_URL, pinForUrgency, toLatLng } from './leaflet';
 
 function FitToPoints({ points }) {
   const map = useMap();
@@ -25,8 +25,9 @@ export function RequestsMap({ requests, height = 420, linkTo = (request) => `/re
   const points = useMemo(() => mappable.map((request) => toLatLng(request.location.coordinates)), [mappable]);
 
   return (
-    <div style={{ height }} className="relative z-0 overflow-hidden rounded-2xl border">
+    <div style={{ height }} className="relative z-0 overflow-hidden rounded-2xl border border-line shadow-sm">
       <MapContainer center={points[0] ?? DEFAULT_CENTER} zoom={11} scrollWheelZoom={false} className="h-full w-full">
+        <AutoInvalidateSize />
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <FitToPoints points={points} />
 
